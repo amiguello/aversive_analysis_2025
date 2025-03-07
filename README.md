@@ -42,5 +42,5 @@ Ref:
 For any issues or questions, please contact:
 
 Albert Miguel López
-Current work mail: amiguel@uni-bonn.de
-Personal mail: amiguello2@gmail.com
+* Current work mail: amiguel@uni-bonn.de
+* Personal mail: amiguello2@gmail.com
