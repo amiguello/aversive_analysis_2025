@@ -1,10 +1,8 @@
-# Project Title
-
-Transformations of the spatial activity manifold convey aversive information in CA3
+# Transformations of the spatial activity manifold convey aversive information in CA3
 
 ## Description
 
-Scripts to create the figures in the paper "Transformations of the spatial activity manifold convey aversive information in CA3".
+Scripts to create the figures in the paper "Transformations of the spatial activity manifold convey aversive information in CA3 (2025)".
 
 The necessary data is from the paper "Efficient encoding of aversive location by CA3 long-range projections"
 Ref: 
