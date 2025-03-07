@@ -4,11 +4,7 @@
 
 Scripts to create the figures in the paper "Transformations of the spatial activity manifold convey aversive information in CA3 (2025)".
 
-The necessary data is from the paper "Efficient encoding of aversive location by CA3 long-range projections"
-Ref: 
-    Efficient encoding of aversive location by CA3 long-range projections
-    Nikbakht, Negar et al.
-    Cell Reports, Volume 43, Issue 3, 113957
+The necessary data is from the paper "Efficient encoding of aversive location by CA3 long-range projections" (2024) Nikbakht, Negar et al. Cell Reports, Volume 43, Issue 3, 113957
 
 
 ## Getting Started
