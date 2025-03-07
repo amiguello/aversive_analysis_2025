@@ -5,7 +5,11 @@ Created on Thu Sep 30 19:37:30 2021
 @author: Albert
 
 Various useful functions for processing Negar's data.
-Might separate this script into preprocessing, processing, postprocessing
+- General "util" functions
+- Pre-processing
+- PCA analysis
+- Position prediction
+- Plotting
 
 """
 
@@ -660,7 +664,7 @@ def compute_average_data_by_position(data, position, position_bin_size=None, max
     return position_bins, data_average, data_std
 
 ###############################################################################
-############################ PROCESSING FUNCTIONS #############################
+############################ PCA FUNCTIONS #############################
 ###############################################################################
 
 

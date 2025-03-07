@@ -4,7 +4,7 @@ Created on Mon Feb 13 16:05:41 2023
 
 @author: Albert
 
-Test function for the multiset CCA
+Functions for the multiset CCA
 
 """
 import time

@@ -4,23 +4,7 @@ Created on Thu Oct  5 03:08:39 2023
 
 @author: Albert
 
-
-THINGS TO DO
-1- fix the tca pipeline. Code in a different algorithm, make a general code that allows for everything
-2- Reproduce previous figures
-3- Proper figure 3 code
-4- Figure 3b with tSNE
-5- Nicer AP/TP/etc. plots, id vs dd 
-6- Probe distances
-7- Figure 1 title font size
-8- Figure 2 stuff (normalize, difference, no last subplot)
-9- Figure 4 subplot, dimension dependency
-10- Figure 4 subplot, belt position dependency
-11- FIX "SESSIONS TO ALIGN" FROM CCA FUNCTION, RIGHT NOW IT ASSUMES THEY ARE SIDX, BUT THEY ARE SNUMS! 
-    DOESN'T WORK IF SIDX DOES NOT GO IN ACCORDANCE TO SLIST
-12- FIX "PCA DIM" AS CCA INPUT.
-    It is different to align PCA with different dimensions, that align all dimensions and then cut CCA
-
+Scripts to create the figures in "Transformations of the spatial activity manifold convey aversive information in CA3" (2025)
 
 
 """
