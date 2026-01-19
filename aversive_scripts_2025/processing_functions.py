@@ -453,10 +453,12 @@ def read_and_preprocess_data(data_cluster, mouse_num, session_num, gaussian_size
     spikes = data_dict['spikes']
     output_data = [['spikes', spikes]]
     
+
+
     if 'amplitudes' in data_dict:
         amplitudes = data_dict['amplitudes']
         output_data.append(['amplitudes', amplitudes])
-        
+
     #Spike pre-processing (smoothing, binning)
     for idx, [data_name, data] in enumerate(output_data):
         data = smoothing(data.astype(float), gaussian_size, axis=1)
@@ -492,7 +494,7 @@ def read_and_preprocess_data(data_cluster, mouse_num, session_num, gaussian_size
     if eliminate_v_zeros == True:
         distance_original = np.copy(distance)
         for idx, [_, data] in enumerate(output_data):
-            distance, data_cut, _ = compute_velocity_and_eliminate_zeros(distance_original, data, pos_max=pos_max)
+            distance, data_cut, velocity = compute_velocity_and_eliminate_zeros(distance_original, data, pos_max=pos_max)
             output_data[idx][1] = data_cut
             
         times = np.arange(len(distance)) * dt
@@ -519,17 +521,24 @@ def read_and_preprocess_data(data_cluster, mouse_num, session_num, gaussian_size
     
     return data_dict
 
+def compute_velocity(position, pos_max=1500):
+    v = get_periodic_difference(position[2:], position[:-2], pos_max)/2 #Centered difference
+    v0 = get_periodic_difference([position[1]], [position[0]], pos_max) #Forward difference
+    vend = get_periodic_difference([position[-1]], [position[-2]], pos_max) #Backward difference
+    v = np.array(list(v0) + list(v) + list(vend))
+    return v
+
 def compute_velocity_and_eliminate_zeros(position, data, pos_max = 1500):
     ''' Given a 1D array "position" of size "timepoints", return the velocity at each point. "position" is assumed periodic in the range [0, pos_max]
         Additionally eliminate all the points where it is zero, by collapsing the position elements (e.g. 1,3,5,5,5,6 becomes 1,3,5,5,6)
         "Data" is a related 2D matrix of size "features X timepoints", the collapsed points are averaged accordingly so no information is ignored
     '''
     
-    v = get_periodic_difference(position[2:], position[:-2], pos_max)/2 #Centered difference
-    v0 = get_periodic_difference([position[1]], [position[0]], pos_max) #Forward difference
-    vend = get_periodic_difference([position[-1]], [position[-2]], pos_max) #Backward difference
-    v = list(v0) + list(v) + list(vend)
-    # v = compute_velocity(position, pos_max=pos_max)
+    # v = get_periodic_difference(position[2:], position[:-2], pos_max)/2 #Centered difference
+    # v0 = get_periodic_difference([position[1]], [position[0]], pos_max) #Forward difference
+    # vend = get_periodic_difference([position[-1]], [position[-2]], pos_max) #Backward difference
+    # v = list(v0) + list(v) + list(vend)
+    v = compute_velocity(position, pos_max=pos_max)
     zero_v_bool = np.array(v) < 1e-10
     
     if np.any(zero_v_bool): #for ever-increasing velocity this can only happen when consecutive positions remain the same (3 minimum at the center, 2 min at the tails of the array)              

@@ -94,7 +94,8 @@ class MultisetCCA(object):
         return self.from_canonical(self.to_canonical(data, m1), m2)
 
 
-def perform_warped_mCCA(pos_list, data_list, max_pos=1500, warping_bins = 150, warp_based_on='position', return_warped_data=True, return_trimmed_data = True, shuffle=False):
+def perform_warped_mCCA(pos_list, data_list, max_pos=1500, warping_bins = 150, warp_based_on='position', 
+                        return_warped_data=True, return_trimmed_data = True, shuffle=False, skip_alignment=False):
     ''' 
         Perform multiset CCA on "raw" M datasets. They are allowed to be of different sizes, so trimming, warping, etc. must be performed.
         Because of this, data warping (making each trial the same size, with each trial defined as passing the max_pos mark) is performed as well
@@ -131,8 +132,8 @@ def perform_warped_mCCA(pos_list, data_list, max_pos=1500, warping_bins = 150, w
             random_shift = np.random.randint(min_shift, max_shift, size=1, dtype=int)[0]
             idxs = list(range(data.shape[1]))
             idxs = idxs[random_shift:] + idxs[:random_shift]
-            pos_list[m] = pos[idxs]
-            # data_list[m] = data[:, idxs]
+            # pos_list[m] = pos[idxs]
+            data_list[m] = data[:, idxs]
     # # ############## [Optional] RANDOMLY SHIFTING DATA AS CONTROL ############
 
             
@@ -146,13 +147,10 @@ def perform_warped_mCCA(pos_list, data_list, max_pos=1500, warping_bins = 150, w
         pos_warped, data_warped, _ = pf.warping(pos, data, warping_bins, max_pos=max_pos, 
                                             warp_sampling_type = 'averaging', warp_based_on = warp_based_on, return_flattened = True)
         
-    
-        # ############# STEP 2: mCCA ############
-        
-        
-        
         pos_list_warped.append(pos_warped); data_list_warped.append(data_warped)
-        
+    
+    # ############# STEP 2: mCCA ############
+
     #Step 2: trim dataset
     pos_list_trimmed, data_list_trimmed = trim_dataset_list(pos_list_warped, data_list_warped, max_pos=max_pos)
     cca_dim = data_list_trimmed[0].shape[0]
@@ -160,29 +158,60 @@ def perform_warped_mCCA(pos_list, data_list, max_pos=1500, warping_bins = 150, w
     #Step 3: mCCA!
     mCCA = MultisetCCA()
     transf_list, inv_transf_list = mCCA.fit(data_list_trimmed)
+    align_fun = mCCA.align
+    to_canonical_fun = mCCA.to_canonical
 
+    if skip_alignment == True:
+        def do_nothing(a, b=1, c=2):
+            return a
+        align_fun = do_nothing
+        to_canonical_fun = do_nothing
+        
     if return_warped_data == True and return_trimmed_data == False:
-        data_dict_aligned = {m1 : [mCCA.align(data_list_warped[m2][:cca_dim], m2, m1) for m2 in range(M)] for m1 in range(M)}
-        data_dict_aligned['canonical'] = [mCCA.to_canonical(data_list_warped[m][:cca_dim], m) for m in range(M)]
+        data_dict_aligned = {m1 : [align_fun(data_list_warped[m2][:cca_dim], m2, m1) for m2 in range(M)] for m1 in range(M)}
+        data_dict_aligned['canonical'] = [to_canonical_fun(data_list_warped[m][:cca_dim], m) for m in range(M)]
         pos_list_aligned = pos_list_warped
         
     elif return_warped_data == True and return_trimmed_data == True:
-        data_dict_aligned = {m1 : [mCCA.align(data_list_trimmed[m2], m2, m1) for m2 in range(M)] for m1 in range(M)}
-        data_dict_aligned['canonical'] = [mCCA.to_canonical(data_list_trimmed[m], m) for m in range(M)]
+        data_dict_aligned = {m1 : [align_fun(data_list_trimmed[m2], m2, m1) for m2 in range(M)] for m1 in range(M)}
+        data_dict_aligned['canonical'] = [to_canonical_fun(data_list_trimmed[m], m) for m in range(M)]
 
         pos_list_aligned = pos_list_trimmed
         
     elif return_warped_data == False and return_trimmed_data == False:
         # print(data_list[0].shape, data_list_trimmed[0].shape)
-        data_dict_aligned = {m1 : [mCCA.align(data_list[m2][:cca_dim], m2, m1) for m2 in range(M)] for m1 in range(M)}
-        data_dict_aligned['canonical'] = [mCCA.to_canonical(data_list[m][:cca_dim], m) for m in range(M)]
+        data_dict_aligned = {m1 : [align_fun(data_list[m2][:cca_dim], m2, m1) for m2 in range(M)] for m1 in range(M)}
+        data_dict_aligned['canonical'] = [to_canonical_fun(data_list[m][:cca_dim], m) for m in range(M)]
         pos_list_aligned = pos_list
         
     elif return_warped_data == False and return_trimmed_data == True:
         pos_list_trimmed, data_list_trimmed = trim_dataset_list(pos_list, data_list, max_pos=max_pos) 
-        data_dict_aligned = {m1 : [mCCA.align(data_list_trimmed[m2][:cca_dim], m2, m1) for m2 in range(M)] for m1 in range(M)}
-        data_dict_aligned['canonical'] = [mCCA.to_canonical(data_list_trimmed[m][:cca_dim], m) for m in range(M)]        
-        pos_list_aligned = pos_list_trimmed        
+        data_dict_aligned = {m1 : [align_fun(data_list_trimmed[m2][:cca_dim], m2, m1) for m2 in range(M)] for m1 in range(M)}
+        data_dict_aligned['canonical'] = [to_canonical_fun(data_list_trimmed[m][:cca_dim], m) for m in range(M)]        
+        pos_list_aligned = pos_list_trimmed  
+        
+    # if return_warped_data == True and return_trimmed_data == False:
+    #     data_dict_aligned = {m1 : [mCCA.align(data_list_warped[m2][:cca_dim], m2, m1) for m2 in range(M)] for m1 in range(M)}
+    #     data_dict_aligned['canonical'] = [mCCA.to_canonical(data_list_warped[m][:cca_dim], m) for m in range(M)]
+    #     pos_list_aligned = pos_list_warped
+        
+    # elif return_warped_data == True and return_trimmed_data == True:
+    #     data_dict_aligned = {m1 : [mCCA.align(data_list_trimmed[m2], m2, m1) for m2 in range(M)] for m1 in range(M)}
+    #     data_dict_aligned['canonical'] = [mCCA.to_canonical(data_list_trimmed[m], m) for m in range(M)]
+
+    #     pos_list_aligned = pos_list_trimmed
+        
+    # elif return_warped_data == False and return_trimmed_data == False:
+    #     # print(data_list[0].shape, data_list_trimmed[0].shape)
+    #     data_dict_aligned = {m1 : [mCCA.align(data_list[m2][:cca_dim], m2, m1) for m2 in range(M)] for m1 in range(M)}
+    #     data_dict_aligned['canonical'] = [mCCA.to_canonical(data_list[m][:cca_dim], m) for m in range(M)]
+    #     pos_list_aligned = pos_list
+        
+    # elif return_warped_data == False and return_trimmed_data == True:
+    #     pos_list_trimmed, data_list_trimmed = trim_dataset_list(pos_list, data_list, max_pos=max_pos) 
+    #     data_dict_aligned = {m1 : [mCCA.align(data_list_trimmed[m2][:cca_dim], m2, m1) for m2 in range(M)] for m1 in range(M)}
+    #     data_dict_aligned['canonical'] = [mCCA.to_canonical(data_list_trimmed[m][:cca_dim], m) for m in range(M)]        
+    #     pos_list_aligned = pos_list_trimmed        
         
 
     return pos_list_aligned, data_dict_aligned, mCCA

@@ -64,7 +64,7 @@ def main():
     ''' Figure 2 SI plots '''
     # fig2_CCA_example()
     # fig2_CCA_aligned_pcas(shuffle=False)
-    fig2_D_E_F_CCA_quantification()
+    # fig2_D_E_F_CCA_quantification()
     
     ''' Figure 2 SI plots '''
     # fig2_CCA_aligned_pcas(shuffle=True)
@@ -72,7 +72,7 @@ def main():
     ''' Figure 3 plots '''
     # fig3_A_and_fig3SI_A_TCA_factors()
     # fig3_B_LDA_on_TCA()
-    # fig3_C_D_f1_plots_and_fig3SI_B_C_accuracy_plots()
+    fig3_C_D_f1_plots_and_fig3SI_B_C_accuracy_plots()
     # fig3_F_and_3SI_A_B_belt_restriction_plots()
 
     ''' Figure 3 SI plots '''
@@ -196,6 +196,7 @@ def process_input_parameter_dict(param_dict_new, analysis_name, custom_filename 
     
     
 def save_figure(fig, fig_name):
+    print(pparam.FIGURES_PATH + fig_name + ".svg")
     fig.savefig(pparam.FIGURES_PATH + fig_name + ".svg") 
 
 def save_pca_data(mouse_list, session_list):
@@ -401,7 +402,7 @@ def plot_fig1SI_A_traces(fig_num = None):
     fig = plt.figure(fig_num, figsize=(7,7)); fig_num += 1
     ax = plt.gca()
     neurons_to_plot = [0,2,3,4,6,7,8,9,10,11,15,20]
-    
+
     for nidx, n in enumerate(neurons_to_plot):
         trace = data[n]
         trace = (trace - np.min(trace))/(np.max(trace) - np.min(trace))
@@ -640,7 +641,7 @@ def plot_fig1_E_position_prediction_example(fig_num = None):
     
     ########## PARAMETERS ###########
     mnum = 6
-    snum = 4
+    snum = 3
 
     time_bin_size = 1  # Number of elements to average over, each dt should be ~65ms
     distance_bin_size = 1  # mm, track is 1500mm, data is in mm
@@ -696,7 +697,7 @@ def plot_fig1_E_position_prediction_example(fig_num = None):
         color = pparam.PREDICTION_COLORS[label]
         ax.scatter(timesteps, p, s=markersize, color=color, label=label)
         
-    ax.scatter(timesteps, pos_pred_shuffle, s=markersize, color='red', label='shuffle')
+    # ax.scatter(timesteps, pos_pred_shuffle, s=markersize, color='red', label='shuffle')
 
         
     ax.set_xlabel('Timestep', fontsize=fs+4)
@@ -1344,6 +1345,9 @@ def perform_mCCA_on_pca_dict_param_dict(pca_analysis_dict, cca_param_dict, force
     return_trimmed_data = cca_param_dict['return_trimmed_data']
     sessions_to_align = cca_param_dict['sessions_to_align']
     shuffle = cca_param_dict['shuffle']
+    skip_alignment = False
+    if 'skip_alignment' in cca_param_dict:    
+        skip_alignment = cca_param_dict['skip_alignment']
     
     #Data parameters
     max_pos = pparam.MAX_POS
@@ -1367,18 +1371,26 @@ def perform_mCCA_on_pca_dict_param_dict(pca_analysis_dict, cca_param_dict, force
         #Set PCA dimension
         pca_list = mCCA_funs.set_dimension_of_pca_list(pca_list, CCA_dim, variance_explained_list = [variance_explained_dict[mnum, snum] for snum in session_list])
         #Perform mCCA
-        pos_list_aligned, pca_dict_aligned, mCCA = mCCA_funs.perform_warped_mCCA(pos_list, pca_list, max_pos, warping_bins, warp_based_on, return_warped_data, return_trimmed_data, shuffle)
+        pos_list_aligned, pca_dict_aligned, mCCA = mCCA_funs.perform_warped_mCCA(pos_list, pca_list, max_pos, warping_bins, warp_based_on, 
+                                                                                 return_warped_data, return_trimmed_data, shuffle, skip_alignment)
 
         #Normalize PCA after alignment changes
         pca_dict_aligned = mCCA_funs.normalize_pca_dict_aligned(pca_dict_aligned, mCCA)
         
         #Find space with best alignment
-        best_space = mCCA_funs.return_best_mCCA_space(pos_list_aligned, pca_dict_aligned, max_pos=1500, plot=False, verbose=False)
+        best_space = mCCA_funs.return_best_mCCA_space(pos_list_aligned, pca_dict_aligned, max_pos=1500, verbose=False)
         pca_list_aligned = pca_dict_aligned[best_space]
                     
         pca_list = [pca_dict_aligned[m][m] for m in range(M)]
-        unaligned_error_array, aligned_error_array = mCCA_funs.get_cross_prediction_errors(pos_list_aligned, pca_list, pos_list_aligned, pca_dict_aligned, max_pos, n_splits, error_type, predictor_name)
+        unaligned_error_array, aligned_error_array = mCCA_funs.get_cross_prediction_errors(pos_list_aligned, pca_list, pos_list_aligned, pca_dict_aligned, 
+                                                                                           max_pos, n_splits, error_type, predictor_name)
         
+        # print('WARNING: IGNORING CCA IN APdecoding_pipeline AS A TEST, REVERT THIS CHANGE')
+        # pca_list_aligned = pca_list
+        # aligned_error_array = unaligned_error_array
+        # print('WARNING: IGNORING CCA IN APdecoding_pipeline AS A TEST, REVERT THIS CHANGE')
+
+
         aligned_data_dict[mnum, 'pos'] = pos_list_aligned
         aligned_data_dict[mnum, 'pca'] = pca_list_aligned
         aligned_data_dict[mnum, 'pca_unaligned'] = pca_list
@@ -1468,7 +1480,7 @@ def perform_mCCA_on_pca_dict(
         pca_dict_aligned = mCCA_funs.normalize_pca_dict_aligned(pca_dict_aligned, mCCA)
         
         #Find space with best alignment
-        best_space = mCCA_funs.return_best_mCCA_space(pos_list_aligned, pca_dict_aligned, max_pos=1500, plot=False, verbose=False)
+        best_space = mCCA_funs.return_best_mCCA_space(pos_list_aligned, pca_dict_aligned, max_pos=1500, verbose=False)
 
         pca_list_aligned = pca_dict_aligned[best_space]
                     
@@ -1837,7 +1849,8 @@ def fig2_D_E_F_CCA_quantification():
         'return_warped_data':False,
         'return_trimmed_data':False,
         'sessions_to_align':'all',
-        'shuffle':False
+        'shuffle':False,
+        'skip_alignment':False
         }
     
         
@@ -2459,7 +2472,9 @@ def perform_APdecoding_on_cca_param_dict(CCA_analysis_dict, ap_decoding_param_di
             
             #Update arrays
             f1 = LDA_results_dict['f1']
+            # print(f1)
             f1_array = np.vstack((f1_array, f1))
+            print(f1_array)
             # accuracy_array.append([LDA_results_dict['accuracy']])
             accuracy_array = np.vstack((accuracy_array, LDA_results_dict['accuracy']))
             LDA_prob_array = np.vstack((LDA_prob_array, LDA_results_dict['LDA_prob']))
@@ -2605,7 +2620,7 @@ def APdecoding_pipeline(preprocessing_param_dict, cca_param_dict, ap_decoding_pa
 
     ############## STEP 2: mCCA ############
     CCA_analysis_dict = perform_mCCA_on_pca_dict_param_dict(PCA_analysis_dict, cca_param_dict)
-        
+
     ############# STEP 3: TCA + LDA ############    
     APdecoding_dict = perform_APdecoding_on_cca_param_dict(CCA_analysis_dict, ap_decoding_param_dict)
 
@@ -2691,7 +2706,10 @@ def fig3_A_and_fig3SI_A_TCA_factors():
 
     ############## STEP 2: mCCA ############
     CCA_analysis_dict = perform_mCCA_on_pca_dict_param_dict(PCA_analysis_dict, cca_param_dict)
-        
+    
+    # print('WARNING: IGNORING CCA IN THE AP DECODING PIPELINE AS A TEST, REVERT THIS CHANGE')
+    # CCA_analysis_dict = PCA_analysis_dict
+
     ############# STEP 3: TCA + LDA ############
     mouse_list = CCA_analysis_dict['mouse_list']
     TCA_dims_param = ap_decoding_param_dict['TCA_factors']
@@ -3007,7 +3025,8 @@ def fig3_C_D_f1_plots_and_fig3SI_B_C_accuracy_plots():
         'return_warped_data':True,
         'return_trimmed_data':False,
         'sessions_to_align':'all',
-        'shuffle':False
+        'shuffle':False,
+        'skip_alignment':True
         }
     
     ap_decoding_param_dict = {
@@ -3032,6 +3051,8 @@ def fig3_C_D_f1_plots_and_fig3SI_B_C_accuracy_plots():
     
     CCA_random_shifts = 25    #Number of random shifts WARNING: LDA PROB NOT CALCULATED FOR IT!!!
     
+    if cca_param_dict['skip_alignment'] == True:
+        print('WARNING: SKIPPING ALIGNMENT DURING AP DECODING!')
     
     print('STARTING')
     print('Sessions: %d'%len(preprocessing_param_dict['session_list']))
@@ -3047,6 +3068,7 @@ def fig3_C_D_f1_plots_and_fig3SI_B_C_accuracy_plots():
         cca_param_dict_shift = {k:v for k,v in cca_param_dict.items()}
         ap_decoding_param_dict_shift = {k:v for k,v in ap_decoding_param_dict.items()}
         cca_param_dict_shift['shuffle'] = True
+        cca_param_dict_shift['skip_alignment'] = False
         ap_decoding_param_dict_shift['TCA_on_LDA_repetitions'] = 5
         ap_decoding_param_dict_shift['LDA_trial_shuffles'] = 0
         ap_decoding_param_dict_shift['LDA_session_shuffles'] = 0

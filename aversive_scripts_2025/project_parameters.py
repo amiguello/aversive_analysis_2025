@@ -98,6 +98,9 @@ SESSION_REPEATS = {4: [(3,5), (4,6)],
 
 ##### PLOTTING VARIABLES #####
 
+AXIS_WIDTH = 3
+TICKS_LENGTH = 7
+
 #Plotting colors
 PCA_CMAP = 'twilight'
 
