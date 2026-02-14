@@ -855,7 +855,7 @@ def predict_position_CV(data, position, n_splits=5, shuffle=False, periodic=True
     shuffle: if True, data is shuffled [DOESN'T WORK AS OF NOW]
     periodic: if True, data is converted                                        
     dmin, dmax: min and max position to do the periodicity
-    predictor name: 'Wiener', 'Kalman', 'SVR'
+    predictor name: 'Wiener', 'Kalman', 'SVR', 'XGBoost'
     predictor_default: if None, a type of predictor specified by "predictor_name" is trained on the data. If one is given, that is used instead (we assume it has been trained)
     return_error: must be a error name. 
     '''

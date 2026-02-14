@@ -306,7 +306,7 @@ def normalize_pca_dict_aligned(pca_dict_aligned, mCCA):
 
 
 def get_cross_prediction_errors(pos_list, data_list, pos_list_aligned, data_dict_aligned, max_pos=1500,
-                                n_splits = 5, error_type='sse', predictor_name='Wiener'):
+                                n_splits = 5, error_type='sse', predictor_name='Wiener', return_position_predictions=False):
     ''' Given M sets of data, return the prediction errors when predicting on unaligned vs aligned data
     
         INPUTS:
@@ -329,6 +329,7 @@ def get_cross_prediction_errors(pos_list, data_list, pos_list_aligned, data_dict
     # pca_list_reduced = [pca[:cca_dim] for pca in pca_list]
     self_error_list = []
     self_predictor_list = []
+    pos_pred_dict = {}
 
     for m in range(M):
         data, position = data_list[m], pos_list[m]
@@ -338,6 +339,8 @@ def get_cross_prediction_errors(pos_list, data_list, pos_list_aligned, data_dict
         
         pos_pred, error, _ = pf.predict_position_CV(data, position, n_splits=n_splits, pmax=max_pos, predictor_name=predictor_name)
         self_error_list.append(error)
+        pos_pred_dict[m,m,'unaligned'] = pos_pred
+        pos_pred_dict[m,m,'aligned'] = pos_pred
 
         
         #Get predictor using the full dataset
@@ -354,9 +357,10 @@ def get_cross_prediction_errors(pos_list, data_list, pos_list_aligned, data_dict
             else:
                 data, position = data_list[m2], pos_list[m2]
                 pos_pred, error = pf.predict_position_from_predictor_object(data, position, predictor, periodic=True, pmax=max_pos)
+                pos_pred_dict[m1, m2, 'unaligned'] = pos_pred
 
             unaligned_error_array[m1, m2] = error
-        
+
         
     aligned_error_array = np.zeros((M,M))
     #C: aligned cross-prediction
@@ -368,10 +372,16 @@ def get_cross_prediction_errors(pos_list, data_list, pos_list_aligned, data_dict
             else:
                 data, position = data_dict_aligned[m1][m2], pos_list_aligned[m2]
                 pos_pred, error = pf.predict_position_from_predictor_object(data, position, predictor, periodic=True, pmax=max_pos)
+                pos_pred_dict[m1, m2, 'aligned'] = pos_pred
+                # print(m1, m2, error, position[:10], pos_pred[:10])
 
             aligned_error_array[m1, m2] = error
-            
-    return unaligned_error_array, aligned_error_array
+        
+    if return_position_predictions == False:
+        return unaligned_error_array, aligned_error_array
+    else:
+        return unaligned_error_array, aligned_error_array, pos_pred_dict
+
 
 def return_best_mCCA_space(pos_list, pca_dict_aligned, max_pos=1500, return_error_list = False, verbose=True):
     ''' 

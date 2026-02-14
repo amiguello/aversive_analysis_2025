@@ -52,7 +52,7 @@ def main():
     
     ''' Figure 1 plots '''
     # plot_fig1_C_firing_rates()
-    # plot_fig1_D_pcas()
+    plot_fig1_D_pcas()
     # plot_fig1_E_position_prediction_example()
     # plot_fig1_F_prediction_across_sessions()
     
@@ -72,7 +72,7 @@ def main():
     ''' Figure 3 plots '''
     # fig3_A_and_fig3SI_A_TCA_factors()
     # fig3_B_LDA_on_TCA()
-    fig3_C_D_f1_plots_and_fig3SI_B_C_accuracy_plots()
+    # fig3_C_D_f1_plots_and_fig3SI_B_C_accuracy_plots()
     # fig3_F_and_3SI_A_B_belt_restriction_plots()
 
     ''' Figure 3 SI plots '''
@@ -1337,8 +1337,9 @@ def perform_mCCA_on_pca_dict_param_dict(pca_analysis_dict, cca_param_dict, force
     #Prediction parameters
     error_type = 'sse'
     n_splits = 5
-    predictor_name = 'Wiener'
-    
+    # predictor_name = 'Wiener'
+    predictor_name = 'SVR'
+
     ## CCA params ##
     CCA_dim = cca_param_dict['CCA_dim']
     return_warped_data = cca_param_dict['return_warped_data']
