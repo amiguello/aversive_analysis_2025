@@ -973,7 +973,6 @@ def plot_colored_line_3d(x, y, z, color_scalar, cmap_name='viridis', fig=1, ax=N
     
     cmap = plt.get_cmap(cmap_name)
     color = cmap(color_scalar)
-    # print(color_scalar)
     
     # We are going to create a line for every pair of points, so we reshape our data into a
     # N x line_length x dimensions array. Line length is 2 and dimension 3 (x, y, z).

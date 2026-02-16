@@ -51,8 +51,9 @@ def main():
     # save_pca_data(np.arange(8), np.arange(9)) #Uncomment this once to pre-compute PCA data. 
     
     ''' Figure 1 plots '''
+    count_neurons()
     # plot_fig1_C_firing_rates()
-    plot_fig1_D_pcas()
+    # plot_fig1_D_pcas()
     # plot_fig1_E_position_prediction_example()
     # plot_fig1_F_prediction_across_sessions()
     
@@ -296,6 +297,8 @@ def perform_pca_on_multiple_mice_param_dict(pca_param_dict):
     PCA_dict = {} #(mnum, snum) = (position, pca_data) with size(position) = timepoints and size(pca_data) = (pca_dims X timepoints)
     input_data_dict = {} #(mnum, snum) = (position, preprocessed_spikes) with size(position) = timepoints and size(preprocessed_spikes) = (num_neurons X timepoints)
 
+
+
     for mnum in mouse_list:
         for snum in session_list:
             
@@ -372,6 +375,40 @@ def pca_and_pos_from_dict_to_lists(pca_dict, mnum, session_list):
 
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Fig 1 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+def count_neurons():
+    
+    ########## PARAMETERS ###########
+    mlist = list(range(8))
+    # mlist = [2,3,5,6]
+    
+    # slist = list(range(1,9))
+    slist = list(range(9))
+    
+    gaussian_size = 25
+    time_bin_size = 1
+    distance_bin_size = 1
+    running = True
+    eliminate_v_zeros = False
+    data_used = 'amplitudes'
+
+    
+
+    num_neurons_list = []
+    num_trials_list = []
+        
+    for midx, mnum in enumerate(mlist):
+        for sidx, snum in enumerate(slist):    
+            data_dict = pf.read_and_preprocess_data(fat_cluster, mnum, snum, gaussian_size, time_bin_size, distance_bin_size, 
+                                                    only_running=running, eliminate_v_zeros=eliminate_v_zeros, pos_max=pparam.MAX_POS)
+            pca_input_data, position, times = pf.get_data_from_datadict(data_dict, data_used)
+            num_neurons_list.append(pca_input_data.shape[0])
+            num_trials_list.append(data_dict['num_trials'])
+            
+    print(num_neurons_list)
+    print("Average neurons per session: %.1f" %np.average(num_neurons_list))
+    print(num_trials_list)
+    print("Average number of trials per session: %.1f" %np.average(num_trials_list))
 
 def plot_fig1SI_A_traces(fig_num = None):
     ''' 
@@ -1337,8 +1374,8 @@ def perform_mCCA_on_pca_dict_param_dict(pca_analysis_dict, cca_param_dict, force
     #Prediction parameters
     error_type = 'sse'
     n_splits = 5
-    # predictor_name = 'Wiener'
-    predictor_name = 'SVR'
+    predictor_name = 'Wiener'
+    # predictor_name = 'SVR'
 
     ## CCA params ##
     CCA_dim = cca_param_dict['CCA_dim']

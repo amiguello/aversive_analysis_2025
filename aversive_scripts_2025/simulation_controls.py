@@ -15,7 +15,6 @@ import matplotlib.pyplot as plt
 import scipy
 from scipy.signal import convolve
 from sklearn import decomposition
-from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 from matplotlib.patches import Rectangle
 
 #Global project variables
@@ -30,13 +29,19 @@ import APdecoding_funs as APfuns
 
 def main():
     # compute_and_store_velocity_data()
-    # example_generated_data_pca_and_position_prediction()
-    latent_space_vs_pca_plot()
-    # compute_position_prediction_error_on_generated_data()
+    
+    # single_session_generation_plots()  
     # quantify_generated_data_cca_single_pair()
+    # quantify_generated_data_cca_single_pair_plots()
+    # compare_cca_single_pair_by_pair_type()
+    # compare_cca_single_pair_by_pair_type_plots()
     # simulated_mCCA_quantification()
+    # simulated_mCCA_quantification_plots()
     # CCA_by_dimensionality()
-    # simulated_airpuff_quantification()
+    # CCA_by_dimensionality_plots()
+    simulated_airpuff_quantification()
+    # simulated_airpuff_quantification_plots()
+
     # test_shapes()
     # <>
     
@@ -98,16 +103,15 @@ def test_shapes():
     latent_array = np.vstack((x,y,z))
     print(latent_array.shape)
     
-    xang = np.pi/3
     
     
                 
     for p in pp:
         ang = 2*np.pi*p/max_pos
         Rx = np.array([[1,0,0],[0, np.cos(ang), -np.sin(ang)],[0, np.sin(ang), np.cos(ang)]])
-        Ry = np.array([[np.cos(ang), 0, np.sin(ang)],[0,1,0],[-np.sin(ang), 0, np.cos(ang)]])
+        # Ry = np.array([[np.cos(ang), 0, np.sin(ang)],[0,1,0],[-np.sin(ang), 0, np.cos(ang)]])
         # Rz = np.array([[np.cos(ang), -np.sin(ang), 0], [np.sin(ang), np.cos(ang), 0], [0,0,1]])
-        Rz = np.array([[np.cos(ang), -np.sin(ang), 0],[np.sin(ang), np.cos(ang), 0],[0, 0, 1]])
+        # Rz = np.array([[np.cos(ang), -np.sin(ang), 0],[np.sin(ang), np.cos(ang), 0],[0, 0, 1]])
 
         
         Rot_array = Rx
@@ -130,7 +134,7 @@ def test_shapes():
     # ax = plt.gca()
     # ax.plot(xx, 1+np.exp(-1 * ((xx-max_pos/2)**2)/(2*(200**2))))
 
-    fig = plt.figure().add_subplot(projection='3d')
+    plt.figure().add_subplot(projection='3d')
     ax = plt.gca()
     ax.plot(latent_array[0], latent_array[1], latent_array[2])
     ax.set_xlabel('X')
@@ -138,11 +142,11 @@ def test_shapes():
     ax.set_zlabel('Z')
     # # return
 
-
-def example_generated_data_pca_and_position_prediction():
-    ########## PARAMETERS ###########
     
+
+def single_session_generation_plots():
     #General
+    np.random.seed(10)
     max_pos = pparam.MAX_POS
     trial_bins = 30
        
@@ -166,183 +170,11 @@ def example_generated_data_pca_and_position_prediction():
     num_trials = 50
     
     ### Firing rate generation
-    simulated_type = 'gaussian'
-    ## Probability weights by position for the firing rate generation
-    ## (1) Homogenous
-    firing_rate_position_probs = np.ones(max_pos)/max_pos 
-    
-    # ## (2) Reward bias
-    # firing_rate_position_probs = np.ones(max_pos) # Probability weights by position for the firing rate generation
-    # firing_rate_position_probs[:150] = firing_rate_position_probs[-150:] = 2.
-    # firing_rate_position_probs = firing_rate_position_probs / np.sum(firing_rate_position_probs)
-    
-    ## (3) Delete sections
-    firing_rate_position_probs = np.ones(max_pos) # Probability weights by position for the firing rate generation
-    firing_rate_position_probs[250:1250] = 0
-    firing_rate_position_probs = firing_rate_position_probs / np.sum(firing_rate_position_probs)
-    
-    ## Probability weights by position for the firing rate standard deviation
-    ## (1) Homogeneous
-    firing_rate_std_probs = np.ones(max_pos)/max_pos 
-    
-    
-    # ## (2) Small only
-    # firing_rate_std_probs = np.ones(max_pos)
-    # firing_rate_std_probs[250:] = 0
-    # firing_rate_std_probs = firing_rate_std_probs/np.sum(firing_rate_std_probs)
-
-    # ## (3) Small or big
-    # firing_rate_std_probs = np.ones(4*max_pos)
-    # firing_rate_std_probs[250:(4*max_pos - 250)] = 0
-    # firing_rate_std_probs = firing_rate_std_probs/np.sum(firing_rate_std_probs)
-    
-    # firing_rate_kwargs={"firing_rate_position_probs":firing_rate_position_probs, "firing_rate_std_probs":firing_rate_std_probs}
-
-    ## Latent parameters
     simulated_type = 'latent'
     
-    error_std = .0
+    error_std = 1.
     
-    # error_std = np.array([0.05]*max_pos)
-    # error_std[500:1000] = 3.
-    latent_type = 'deformed circle 2'
-    latent_type = 'deformed circle twist 2'
-    latent_type = 'deformed circle sigmoid 2'
-    firing_rate_kwargs={"error_std":error_std, 'latent_type':latent_type}
-
-
-    ## Predictor parameters ##
-    cv_folds = 5
-    predictor_name = 'Wiener'
-    error_type = 'sse'
-    
-    ## Plotting parameters
-    fig_num = 1
-    fs = 15
-    pca_plot_bin_size = 30 #Only used for plotting pca
-    
-    ## Store velocities from real data
-    compute_and_store_velocity_data(trial_bins, session_list_to_train_velocity, time_bin_size, position_bin_size, gaussian_size, 
-                                    data_used, running, eliminate_v_zeros=eliminate_v_zeros_to_train_velocity)
-    
-    ### Create simulated firing rates
-    firing_rate_funs_by_neuron = create_simulated_firing_rates(num_neurons, simulated_type, **firing_rate_kwargs)
-
-    # ## Generate a session worth of data, position and spikes
-    generate_session_data(dt, num_trials, trial_bins, firing_rate_funs_by_neuron, session_list_to_train_velocity, plot=True)
-
-
-    fig_num += 1
-    ## Pre-process generated data
-    data_dict = np.load(OUTPUT_PATH +"generated_session.npy", allow_pickle=True)[()]
-    data_dict = preprocess_generated_data(data_dict, time_bin_size, position_bin_size, gaussian_size, eliminate_v_zeros)
-    pca_input_data = data_dict['amplitudes_binned_normalized']
-    position = data_dict['distance']
-
-
-    
-
-    
-    ## Perform PCA
-    pca = pf.project_spikes_PCA(pca_input_data, num_components = 3)
-    position, pca, _ = pf.warping(position, pca, 150, max_pos=pparam.MAX_POS, 
-                                  warp_sampling_type = 'interpolation', warp_based_on = 'time', return_flattened=True)
-    
-
-    
-    
-    pos_pred, error, predictor = pf.predict_position_CV(pca, position, n_splits=cv_folds, shuffle=False, periodic=True, pmin=0, pmax=pparam.MAX_POS,
-                            predictor_name=predictor_name, predictor_default=None, return_error=error_type)
-    
-    
-    
-    
-    ########### PLOTS ###########
-    ## Plot PCA
-    angle = 75
-    angle_azim = -90
-    rows = 2 #One row per session
-    cols = 1 #raw data and trial averaged
-    fig, axs = plt.subplots(rows, cols, subplot_kw={"projection": "3d"}, figsize=(9,7)) 
-    
-    #Plot all trials
-    ax = axs.ravel()[0]
-    pf.plot_pca_with_position(pca, position, ax=ax, max_pos = pparam.MAX_POS, cmap_name = pparam.PCA_CMAP, fs=15, scatter=True, cbar=False, cbar_label='Position (mm)',
-                                alpha=1, angle=angle, angle_azim=angle_azim, axis = 'off', show_axis_labels=False, axis_label=None, 
-                                ms = 10, lw=3)
-
-    #Plot trial average
-
-    
-    ax = axs.ravel()[1]
-    position_unique, pca_average, pca_std = pf.compute_average_data_by_position(pca, position, position_bin_size=pca_plot_bin_size, max_pos=max_pos)
-    pf.plot_pca_with_position(pca_average, position_unique, ax=ax, max_pos = pparam.MAX_POS, cmap_name = pparam.PCA_CMAP, fs=15, cbar=False, cbar_label='Position (mm)',
-                                alpha=1, angle=angle, angle_azim=angle_azim, axis = 'off', show_axis_labels=False, axis_label=None, 
-                                scatter=False, ms = 250, lw=6)
-    
-
-    ### PLOT POSITION PREDICTION ###
-    markersize=50
-    fig_num += 1
-    fig = plt.figure(fig_num, figsize=(7,4)); fig_num += 1
-    ax = plt.gca()
-    
-    timesteps = np.arange(len(position))
-
-    for plot_idx, p in enumerate([position, pos_pred]):
-        label = pparam.PREDICTION_LABELS[plot_idx]
-        color = pparam.PREDICTION_COLORS[label]
-        ax.scatter(timesteps, p, s=markersize, color=color, label=label)
-        
-        
-    # ax.scatter(timesteps, pos_pred_shuffle, s=markersize, color='red', label='shuffle')
-
-    ax.set_xlim([0,2000])
-        
-    ax.set_xlabel('Timestep', fontsize=fs+4)
-    # ax.set_yticks(np.arange(len(neurons_to_plot)), neurons_to_plot)
-    ax.tick_params(axis='x', labelsize=fs)
-    ax.tick_params(axis='y', labelsize=fs)
-    ax.spines[['right', 'top']].set_visible(False)
-    for axis in ['top','bottom','left','right']:
-        ax.spines[axis].set_linewidth(3)
-    ax.set_ylabel('Position (mm)', fontsize=fs+4)
-    ax.set_title('Generated session, SSE=%.1f (cm)'%(error), 
-                 pad=20, fontsize=fs+4)
-    ax.legend(fontsize=fs-4, loc='upper right', frameon=False)
-    fig.tight_layout()
-    
-
-def latent_space_vs_pca_plot():
-    #General
-    max_pos = pparam.MAX_POS
-    trial_bins = 30
-       
-    #Data preprocessing
-    time_bin_size = 1  # Number of elements to average over, each dt should be ~65ms
-    position_bin_size = 1  # mm, track is 1500mm, data is in mm
-    gaussian_size = 25  # Why not
-    data_used = 'amplitudes'
-    running = True
-    eliminate_v_zeros = True
-    
-    
-    #Velocity generation
-    session_list_to_train_velocity = np.arange(3)
-    # session_list_to_train_velocity = [3,4,5,6]
-    eliminate_v_zeros_to_train_velocity = False
-    
-    ### Position generation
-    dt = 0.01 # time interval, in seconds
-    num_neurons = 50 # Number of neurons
-    num_trials = 30
-    
-    ### Firing rate generation
-    simulated_type = 'latent'
-    
-    error_std = .1
-    
-    latent_type = 'deformed circle 2'
+    latent_type = 'deformed circle 1'
     # latent_type = 'deformed circle twist'
     # latent_type = 'periodic spiral'
     # latent_type = 'noise'
@@ -366,8 +198,8 @@ def latent_space_vs_pca_plot():
     ### Create simulated firing rates
     firing_rate_funs_by_neuron, latent_array = create_simulated_firing_rates(num_neurons, simulated_type, return_latent_space=True, **firing_rate_kwargs)
 
-    # ## Generate a session worth of data, position and spikes
-    generate_session_data(dt, num_trials, trial_bins, firing_rate_funs_by_neuron, error_std, session_list_to_train_velocity, plot=True)
+    ### Generate a session worth of data, position and spikes
+    data_dict = generate_session_data(dt, num_trials, trial_bins, firing_rate_funs_by_neuron, error_std, session_list_to_train_velocity, plot=False)
 
 
     fig_num += 1
@@ -376,7 +208,6 @@ def latent_space_vs_pca_plot():
     data_dict = preprocess_generated_data(data_dict, time_bin_size, position_bin_size, gaussian_size, eliminate_v_zeros)
     pca_input_data = data_dict['amplitudes_binned_normalized']
     position = data_dict['distance']
-
 
     
 
@@ -396,46 +227,89 @@ def latent_space_vs_pca_plot():
     
     
     ########### PLOTS ###########
+    
+    ### Plot firing rates ###  
+    fig, axs = plt.subplots(4,4, figsize=(8,5)); fig_num += 1
+    fs = 15
+    for n in range(16):
+        ax = axs.ravel()[n]
+        xx = np.linspace(0, max_pos, 100)
+        firing_rate_fun = firing_rate_funs_by_neuron[n]
+        firing_rate_list = [firing_rate_fun(p) for p in xx]
+        ax.plot(xx, firing_rate_list, lw=3, color='black')
+        # ax.set_ylabel('Var. explained (ratio)', color=color1, fontsize=fs)
+        ax.tick_params(axis='x', labelsize=fs)                
+        ax.tick_params(axis='y', labelsize=fs)
+        ax.set_xlim([0,1500])
+        
+        if n == 0:
+            ax.set_ylabel('Firing rate (Hz)', fontsize=fs)
+        if n == 12:
+            ax.set_xlabel('Position (mm)', fontsize=fs)
+            
+        ax.spines[['right', 'top']].set_visible(False)
+        for axis in ['top','bottom','left','right']:
+            ax.spines[axis].set_linewidth(2)
+        ax.xaxis.set_tick_params(width=2, length=4)
+        ax.yaxis.set_tick_params(width=2, length=4)
+    
+    fig.tight_layout()
+    save_figure(fig, 'figSIM1_single_session_firing_rates')
 
     
-    ## Plot latent space
     
+
+    
+
+
+    ## Plot latent space
+    angle_latent = 50
+    angle_azim_latent = 93
     fig = plt.figure().add_subplot(projection='3d'); fig_num += 1
     ax = plt.gca()
-    ax.plot(latent_array[0], latent_array[1], latent_array[2])
-    # ax.view_init(elev=angle, azim=angle_azim)
+    latent_pos = np.arange(max_pos)
+    pf.plot_pca_with_position(latent_array, latent_pos, ax=ax, max_pos = pparam.MAX_POS, cmap_name = pparam.PCA_CMAP, fs=15, cbar=False, cbar_label='Position (mm)',
+                                alpha=1., angle=angle_latent, angle_azim=angle_azim_latent, axis = 'off', show_axis_labels=False, axis_label=None, 
+                                scatter=True, ms = 40, lw=6)
+    
+    fig = plt.gcf()
 
-    ax.set_xlabel('X')
-    ax.set_ylabel('Y')
-    ax.set_zlabel('Z')
+    save_figure(fig, 'figSIM1_single_session_latent_space')
         
     ## Plot PCA
-    angle = 75
-    angle_azim = -90
+    angle_pca = -117
+    angle_azim_pca = -75
+
     rows = 2 #One row per session
     cols = 1 #raw data and trial averaged
-    fig, axs = plt.subplots(rows, cols, subplot_kw={"projection": "3d"}, figsize=(9,7)) 
+    fig, axs = plt.subplots(rows, cols, subplot_kw={"projection": "3d"}, figsize=(12,7)) 
     
     #Plot all trials
     ax = axs.ravel()[0]
-    pf.plot_pca_with_position(pca, position, ax=ax, max_pos = pparam.MAX_POS, cmap_name = pparam.PCA_CMAP, fs=15, scatter=True, cbar=False, cbar_label='Position (mm)',
-                                alpha=1, angle=angle, angle_azim=angle_azim, axis = 'off', show_axis_labels=False, axis_label=None, 
+    print(pca.shape)
+    pca_to_plot = pca[:,::1]
+    position_to_plot = position[::1]
+    pf.plot_pca_with_position(pca_to_plot, position_to_plot, ax=ax, max_pos = pparam.MAX_POS, cmap_name = pparam.PCA_CMAP, fs=15, scatter=True, cbar=False, cbar_label='Position (mm)',
+                                alpha=1, angle=angle_pca, angle_azim=angle_azim_pca, axis = 'off', show_axis_labels=False, axis_label=None, 
                                 ms = 10, lw=3)
 
     #Plot trial average
-
+    angle_pca = -142
+    angle_azim_pca = -106
     
     ax = axs.ravel()[1]
     position_unique, pca_average, pca_std = pf.compute_average_data_by_position(pca, position, position_bin_size=pca_plot_bin_size, max_pos=max_pos)
     pf.plot_pca_with_position(pca_average, position_unique, ax=ax, max_pos = pparam.MAX_POS, cmap_name = pparam.PCA_CMAP, fs=15, cbar=False, cbar_label='Position (mm)',
-                                alpha=1, angle=angle, angle_azim=angle_azim, axis = 'off', show_axis_labels=False, axis_label=None, 
+                                alpha=1, angle=angle_pca, angle_azim=angle_azim_pca, axis = 'off', show_axis_labels=False, axis_label=None, 
                                 scatter=False, ms = 250, lw=6)
     
+    save_figure(fig, 'figSIM1_single_session_pca')
 
     ### PLOT POSITION PREDICTION ###
     markersize=50
+    fs = 20
     fig_num += 1
-    fig = plt.figure(fig_num, figsize=(7,4)); fig_num += 1
+    fig = plt.figure(fig_num, figsize=(9,4)); fig_num += 1
     ax = plt.gca()
     
     timesteps = np.arange(len(position))
@@ -450,22 +324,27 @@ def latent_space_vs_pca_plot():
 
     ax.set_xlim([0,2000])
         
-    ax.set_xlabel('Timestep', fontsize=fs+4)
+    ax.set_xlabel('Timestep', fontsize=fs)
     # ax.set_yticks(np.arange(len(neurons_to_plot)), neurons_to_plot)
     ax.tick_params(axis='x', labelsize=fs)
     ax.tick_params(axis='y', labelsize=fs)
     ax.spines[['right', 'top']].set_visible(False)
     for axis in ['top','bottom','left','right']:
         ax.spines[axis].set_linewidth(3)
-    ax.set_ylabel('Position (mm)', fontsize=fs+4)
+    ax.xaxis.set_tick_params(width=3, length=5)
+    ax.yaxis.set_tick_params(width=3, length=5)
+    ax.set_ylabel('Position (mm)', fontsize=fs)
     ax.set_title('Generated session, SSE=%.1f (cm)'%(error), 
-                 pad=20, fontsize=fs+4)
-    ax.legend(fontsize=fs-4, loc='upper right', frameon=False)
+                 pad=20, fontsize=fs)
+    ax.legend(fontsize=fs, loc='upper right', frameon=False)
     fig.tight_layout()
+    save_figure(fig, 'figSIM1_single_session_position_prediction')
 
 
 
 def quantify_generated_data_cca_single_pair():
+    
+    np.random.seed(5)
     
     ########## PARAMETERS ###########
     
@@ -494,64 +373,26 @@ def quantify_generated_data_cca_single_pair():
     num_trials = 50 # Number of trials per generated session
     
     ### Firing rate generation
-
-
-    ## Probability weights by position for the firing rate generation
-    ## (1) Homogenous
-    firing_rate_position_probs = np.ones(max_pos)/max_pos 
-    
-    ## (2) Reward bias
-    firing_rate_position_probs = np.ones(max_pos) # Probability weights by position for the firing rate generation
-    firing_rate_position_probs[:150] = firing_rate_position_probs[-150:] = 2.
-    firing_rate_position_probs = firing_rate_position_probs / np.sum(firing_rate_position_probs)
-    
-    ## (3) Delete sections
-    firing_rate_position_probs = np.ones(max_pos) # Probability weights by position for the firing rate generation
-    firing_rate_position_probs[250:1250] = 0
-    firing_rate_position_probs = firing_rate_position_probs / np.sum(firing_rate_position_probs)
-    
-    ## Probability weights by position for the firing rate standard deviation
-    ## (1) Homogeneous
-    firing_rate_std_probs = np.ones(max_pos)/max_pos 
-    
-    
-    # ## (2) Small only
-    # firing_rate_std_probs = np.ones(max_pos)
-    # firing_rate_std_probs[250:] = 0
-    # firing_rate_std_probs = firing_rate_std_probs/np.sum(firing_rate_std_probs)
-
-    # ## (3) Small or big
-    # firing_rate_std_probs = np.ones(4*max_pos)
-    # firing_rate_std_probs[250:(4*max_pos - 250)] = 0
-    # firing_rate_std_probs = firing_rate_std_probs/np.sum(firing_rate_std_probs)
-    
-    simulated_type1 = 'gaussian'
-    firing_rate_kwargs1 ={"firing_rate_position_probs":firing_rate_position_probs, "firing_rate_std_probs":firing_rate_std_probs}
-    
-    simulated_type2 = 'gaussian'
-    firing_rate_kwargs2 ={"firing_rate_position_probs":firing_rate_position_probs, "firing_rate_std_probs":firing_rate_std_probs}
-
     ## Latent parameters    
-    error_std1 = .1
-    error_std2 = .1
+    error_std1 = 1.
+    error_std2 = 1.
+    error_std_list = [error_std1, error_std2]
 
-    # error_std = np.array([0.05]*max_pos)
-    # error_std[500:1000] = 3.
     
     simulated_type1 = 'latent'
     latent_type1 = 'deformed circle 1'
     # latent_type1 = 'deformed circle twist 2'
 
-    firing_rate_kwargs1 = {"error_std":error_std1, 'latent_type':latent_type1}
+    firing_rate_kwargs1 = {'latent_type':latent_type1}
     
     simulated_type2 = 'latent'
-    # latent_type2 = 'deformed circle 2'
+    latent_type2 = 'deformed circle 2'
     # latent_type2 = 'deformed circle double'
     # latent_type2 = 'periodic spiral'
     # latent_type2 = 'noise'
-    latent_type2 = 'deformed circle double'
+    # latent_type2 = 'deformed circle double'
 
-    firing_rate_kwargs2 = {"error_std":error_std2, 'latent_type':latent_type2}
+    firing_rate_kwargs2 = {'latent_type':latent_type2}
     
     
     
@@ -560,7 +401,7 @@ def quantify_generated_data_cca_single_pair():
 
 
     ## Session generation
-    number_of_generated_session_pairs = 1
+    number_of_generated_session_pairs = 25
     number_of_sessions_to_align = len(simulated_type_list)
     
     ## Predictor parameters ##
@@ -578,10 +419,7 @@ def quantify_generated_data_cca_single_pair():
     warp_based_on = 'position'
     skip_alignment = False
     
-    ## Plotting parameters
-    fig_num = 1
-    fs = 15
-    pca_plot_bin_size = 30 #Only used for plotting pca
+
        
     ## Store velocities from real data
     compute_and_store_velocity_data(trial_bins, session_list_to_train_velocity, time_bin_size, position_bin_size, gaussian_size, 
@@ -598,6 +436,7 @@ def quantify_generated_data_cca_single_pair():
     self_error_array_total = np.zeros((number_of_sessions_to_align,0))
     unaligned_error_array_total = np.zeros((number_of_sessions_to_align,number_of_sessions_to_align,0))
     aligned_error_array_total = np.zeros((number_of_sessions_to_align,number_of_sessions_to_align,0))
+    
     
     for npair in range(number_of_generated_session_pairs):
     
@@ -617,7 +456,8 @@ def quantify_generated_data_cca_single_pair():
 
 
             # ## Generate a session worth of data, position and spikes
-            generate_session_data(dt, num_trials, trial_bins, firing_rate_funs_by_neuron, session_list_to_train_velocity, plot=False)
+            error_std = error_std_list[i]
+            generate_session_data(dt, num_trials, trial_bins, firing_rate_funs_by_neuron, error_std, session_list_to_train_velocity, plot=False)
             
             
             ## Pre-process generated data
@@ -671,33 +511,11 @@ def quantify_generated_data_cca_single_pair():
         
         print(unaligned_error_array)
         print(aligned_error_array)
-        # self_error_array_total += unaligned_error_array.diagonal()
-        # unaligned_error_array_total += unaligned_error_array
-        # aligned_error_array_total += aligned_error_array
         
         self_error_array_total = np.hstack((self_error_array_total, unaligned_error_array.diagonal().reshape((2,1))))
         unaligned_error_array_total = np.dstack((unaligned_error_array_total, unaligned_error_array))
         aligned_error_array_total = np.dstack((aligned_error_array_total, aligned_error_array))
         
-        # self_error = np.average(unaligned_error_array.diagonal())
-        # unaligned_error = np.average(unaligned_error_array[[0,1],[1,0]])
-        # aligned_error = np.average(aligned_error_array[[0,1],[1,0]])
-        
-        # self_error_list.append(self_error)
-        # unaligned_error_list.append(unaligned_error)
-        # aligned_error_list.append(aligned_error)
-        
-        # self_error_list.append(unaligned_error_array.diagonal()[0])
-        # unaligned_error_list.append(unaligned_error_array[0,1])
-        # aligned_error_list.append(aligned_error_array[0,1])
-        
-        # self_error_list.append(unaligned_error_array.diagonal()[1])
-        # unaligned_error_list.append(unaligned_error_array[1,0])
-        # aligned_error_list.append(aligned_error_array[1,0])
-        
-        # self_error_list.append(unaligned_error_array.diagonal()[0])
-        # unaligned_error_list.append(unaligned_error_array[0,1])
-        # aligned_error_list.append(aligned_error_array[0,1])
 
 
 
@@ -706,116 +524,132 @@ def quantify_generated_data_cca_single_pair():
         aligned_error_list.extend(aligned_error_array[[0,1],[1,0]])
         
 
-        
         #Plot one example
         if npair == 0:
-            angle = 75
-            angle_azim = -90
-            rows = 1 
-            cols = 2 #Unaligned and aligned
-            fig, axs = plt.subplots(rows, cols, subplot_kw={"projection": "3d"}, figsize=(9,7)); fig_num += 1
-                    
             
-            #Plot unaligned PCAs
-            ax = axs.ravel()[0]
-            for i in range(2):
-                pca = pca_list[i]
-                position = pos_list_aligned[i]
-
-                position_unique, pca_average, pca_std = pf.compute_average_data_by_position(pca, position, position_bin_size=pca_plot_bin_size, max_pos=max_pos)
-                pf.plot_pca_with_position(pca_average, position_unique, ax=ax, max_pos = pparam.MAX_POS, cmap_name = pparam.PCA_CMAP, fs=15, cbar=False, cbar_label='Position (mm)',
-                                            alpha=1, angle=angle, angle_azim=angle_azim, axis = 'off', show_axis_labels=False, axis_label=None, 
-                                            scatter=False, ms = 250, lw=6)
-            #Plot aligned PCAs
-            ax = axs.ravel()[1]
-            for i in range(2):
-                pca = pca_list_aligned[i]
-                position = pos_list_aligned[i]
-
-                position_unique, pca_average, pca_std = pf.compute_average_data_by_position(pca, position, position_bin_size=pca_plot_bin_size, max_pos=max_pos)
-                pf.plot_pca_with_position(pca_average, position_unique, ax=ax, max_pos = pparam.MAX_POS, cmap_name = pparam.PCA_CMAP, fs=15, cbar=False, cbar_label='Position (mm)',
-                                            alpha=1, angle=angle, angle_azim=angle_azim, axis = 'off', show_axis_labels=False, axis_label=None, 
-                                            scatter=False, ms = 250, lw=6)
-                
-                
-                
-            ### PLOT POSITION PREDICTION ###
-            
-            
-            markersize=50
-            fig = plt.figure(fig_num, figsize=(7,4)); fig_num += 1
-            fig, axs = plt.subplots(2, 2, figsize=(18,10)); fig_num += 1
-
-            for m1 in range(2):
-                for m2 in range(2):
-                    ax = axs[m1, m2]
-                    position = pos_list_aligned[m2]
-                    position_pred = pos_pred_dict[m1, m2, 'aligned']
-                    err = aligned_error_array[m1, m2]
-                    
-                    for plot_idx, p in enumerate([position, position_pred]):
-                        label = pparam.PREDICTION_LABELS[plot_idx]
-                        color = pparam.PREDICTION_COLORS[label]
-                        timesteps = np.arange(len(p))
-                        ax.scatter(timesteps, p, s=markersize, color=color, label=label)
-                
-                    # ax.scatter(timesteps, pos_pred_shuffle, s=markersize, color='red', label='shuffle')
-        
-                    ax.set_xlim([0,2000])
-                        
-                    ax.set_xlabel('Timestep', fontsize=fs+4)
-                    # ax.set_yticks(np.arange(len(neurons_to_plot)), neurons_to_plot)
-                    ax.tick_params(axis='x', labelsize=fs)
-                    ax.tick_params(axis='y', labelsize=fs)
-                    ax.spines[['right', 'top']].set_visible(False)
-                    for axis in ['top','bottom','left','right']:
-                        ax.spines[axis].set_linewidth(3)
-                    ax.set_ylabel('Position (mm)', fontsize=fs+4)
-                    ax.set_title('Generated session, SSE=%.1f (cm)'%(err), 
-                                  pad=20, fontsize=fs+4)
-                    ax.legend(fontsize=fs-4, loc='upper right', frameon=False)
-            fig.tight_layout()
-            
-            
-            # markersize=50
-            # fig = plt.figure(fig_num, figsize=(7,4)); fig_num += 1
-            
-            # ax = plt.gca()
-            
-            # position = pos_list_aligned[0]
-            # position_pred = pos_list_aligned[1]
-
-            # for plot_idx, p in enumerate([position, position_pred]):
-            #     label = pparam.PREDICTION_LABELS[plot_idx]
-            #     color = pparam.PREDICTION_COLORS[label]
-            #     timesteps = np.arange(len(p))
-            #     ax.scatter(timesteps, p, s=markersize, color=color, label=label)
-                
-            # # ax.scatter(timesteps, pos_pred_shuffle, s=markersize, color='red', label='shuffle')
-
-            # ax.set_xlim([0,2000])
-                
-            # ax.set_xlabel('Timestep', fontsize=fs+4)
-            # # ax.set_yticks(np.arange(len(neurons_to_plot)), neurons_to_plot)
-            # ax.tick_params(axis='x', labelsize=fs)
-            # ax.tick_params(axis='y', labelsize=fs)
-            # ax.spines[['right', 'top']].set_visible(False)
-            # for axis in ['top','bottom','left','right']:
-            #     ax.spines[axis].set_linewidth(3)
-            # ax.set_ylabel('Position (mm)', fontsize=fs+4)
-            # # ax.set_title('Generated session, SSE=%.1f (cm)'%(error), 
-            # #              pad=20, fontsize=fs+4)
-            # ax.legend(fontsize=fs-4, loc='upper right', frameon=False)
-            # fig.tight_layout()
-            
-            
-            
+            single_example_data_dict = {'pos_list_aligned':pos_list_aligned, 'pca_list':pca_list, 'pca_list_aligned':pca_list_aligned,
+                                        'pos_pred_dict':pos_pred_dict, 'aligned_error_array':aligned_error_array}
     
     
     cca_results_dict = {}
     cca_results_dict[pparam.CCA_LABELS[0]] = self_error_array_total
     cca_results_dict[pparam.CCA_LABELS[1]] = unaligned_error_array_total
     cca_results_dict[pparam.CCA_LABELS[2]] = aligned_error_array_total
+    
+    
+    
+    
+    dict_to_save = {
+        'cca_results_dict':cca_results_dict,
+        'single_example_data_dict':single_example_data_dict
+        
+        }
+    
+    label_save = 'figSI1_single_pair_data'
+    save_data(label_save, dict_to_save)
+    quantify_generated_data_cca_single_pair_plots()
+    
+    
+def quantify_generated_data_cca_single_pair_plots():
+    
+    
+    label_save = 'figSI1_single_pair_data'
+    results_dict = load_data(label_save)
+    
+    cca_results_dict = results_dict['cca_results_dict']
+    single_example_data_dict = results_dict['single_example_data_dict']
+    
+    #### PLOTS ####
+    
+    #### SINGLE EXAMPLE PLOTS ####
+    
+    example_pca_list = single_example_data_dict['pca_list']
+    example_pca_list_aligned = single_example_data_dict['pca_list_aligned']
+    example_pos_list_aligned = single_example_data_dict['pos_list_aligned']
+    example_pos_pred_dict = single_example_data_dict['pos_pred_dict']
+    example_aligned_error_array = single_example_data_dict['aligned_error_array']
+    
+    
+    ## Plotting parameters
+    fig_num = 1
+    fs = 15
+    pca_plot_bin_size = 30 #Only used for plotting pca
+    max_pos = pparam.MAX_POS
+    number_of_sessions_to_align = len(example_pca_list)
+    
+    angle = 75
+    angle_azim = -90
+    rows = 1 
+    cols = 2 #Unaligned and aligned
+    fig, axs = plt.subplots(rows, cols, subplot_kw={"projection": "3d"}, figsize=(9,7)); fig_num += 1
+            
+    
+    #Plot unaligned PCAs
+    ax = axs.ravel()[0]
+    for i in range(2):
+        pca = example_pca_list[i]
+        position = example_pos_list_aligned[i]
+
+        position_unique, pca_average, pca_std = pf.compute_average_data_by_position(pca, position, position_bin_size=pca_plot_bin_size, max_pos=max_pos)
+        pf.plot_pca_with_position(pca_average, position_unique, ax=ax, max_pos = pparam.MAX_POS, cmap_name = pparam.PCA_CMAP, fs=15, cbar=False, cbar_label='Position (mm)',
+                                    alpha=1, angle=angle, angle_azim=angle_azim, axis = 'off', show_axis_labels=False, axis_label=None, 
+                                    scatter=False, ms = 250, lw=6)
+    #Plot aligned PCAs
+    ax = axs.ravel()[1]
+    for i in range(2):
+        pca = example_pca_list_aligned[i]
+        position = example_pos_list_aligned[i]
+
+        position_unique, pca_average, pca_std = pf.compute_average_data_by_position(pca, position, position_bin_size=pca_plot_bin_size, max_pos=max_pos)
+        pf.plot_pca_with_position(pca_average, position_unique, ax=ax, max_pos = pparam.MAX_POS, cmap_name = pparam.PCA_CMAP, fs=15, cbar=False, cbar_label='Position (mm)',
+                                    alpha=1, angle=angle, angle_azim=angle_azim, axis = 'off', show_axis_labels=False, axis_label=None, 
+                                    scatter=False, ms = 250, lw=6)
+    
+    save_figure(fig, 'figSIM1_cca_single_pair_example')
+
+        
+        
+    ### PLOT POSITION PREDICTION ###
+
+
+    markersize=50
+    fig = plt.figure(fig_num, figsize=(7,4)); fig_num += 1
+    fig, axs = plt.subplots(2, 2, figsize=(18,10)); fig_num += 1
+
+    for m1 in range(2):
+        for m2 in range(2):
+            ax = axs[m1, m2]
+            position = example_pos_list_aligned[m2]
+            position_pred = example_pos_pred_dict[m1, m2, 'aligned']
+            err = example_aligned_error_array[m1, m2]
+            
+            for plot_idx, p in enumerate([position, position_pred]):
+                label = pparam.PREDICTION_LABELS[plot_idx]
+                color = pparam.PREDICTION_COLORS[label]
+                timesteps = np.arange(len(p))
+                ax.scatter(timesteps, p, s=markersize, color=color, label=label)
+        
+            # ax.scatter(timesteps, pos_pred_shuffle, s=markersize, color='red', label='shuffle')
+
+            ax.set_xlim([0,2000])
+                
+            ax.set_xlabel('Timestep', fontsize=fs+4)
+            # ax.set_yticks(np.arange(len(neurons_to_plot)), neurons_to_plot)
+            ax.tick_params(axis='x', labelsize=fs)
+            ax.tick_params(axis='y', labelsize=fs)
+            ax.spines[['right', 'top']].set_visible(False)
+            for axis in ['top','bottom','left','right']:
+                ax.spines[axis].set_linewidth(3)
+            ax.set_ylabel('Position (mm)', fontsize=fs+4)
+            ax.set_title('Generated session, SSE=%.1f (cm)'%(err), 
+                          pad=20, fontsize=fs+4)
+            ax.legend(fontsize=fs-4, loc='upper right', frameon=False)
+    fig.tight_layout()
+    
+
+    
+    
+    
     
     if number_of_sessions_to_align == 2:
         #Plot for 1 aligning to 2, and 2 aligning to 1
@@ -824,7 +658,7 @@ def quantify_generated_data_cca_single_pair():
             ref_idx = i
             target_idx = (i+1)%2
     
-            fig = plt.figure(num=fig_num, figsize=(4,4)); fig_num += 1
+            fig = plt.figure(num=fig_num, figsize=(4,3)); fig_num += 1
             ax  = plt.gca()
             all_bars_width = .8
             num_of_bars = 1
@@ -837,20 +671,22 @@ def quantify_generated_data_cca_single_pair():
             for label_idx, label in enumerate(cca_labels):
                 xpos = xpos_list[label_idx]
                 error_array = cca_results_dict[label]
+
                 if label == 'Self':
                     errors = error_array[target_idx]
-                    print(errors)
                 else:
                     errors = error_array[ref_idx, target_idx]
+                print(i, label, errors)
+
                 avg = np.average(errors)
                 # err = scipy.stats.sem(errors) ## Change also height in significance!
                 err = np.std(errors)/np.sqrt(len(errors))
                 
-                ax.bar(xpos, avg, width=barwidth, alpha=0.7, edgecolor=None, color=pparam.CCA_COLORS[label_idx])
-                ax.errorbar([xpos], avg, yerr=err, fmt='', markersize=35, markeredgewidth=5, elinewidth = 5, zorder=2, color=pparam.CCA_COLORS[label_idx], alpha=0.6)
+                ax.bar(xpos, avg, width=barwidth, alpha=0.9, edgecolor=None, color=pparam.CCA_COLORS[label_idx])
+                ax.errorbar([xpos], avg, yerr=err, fmt='', markersize=35, markeredgewidth=5, elinewidth = 5, zorder=2, color=pparam.CCA_COLORS[label_idx], alpha=1.)
                 
-                xx_scatter = [xpos]*len(errors)
-                ax.scatter(xx_scatter, errors, s=30, color = pparam.CCA_COLORS[label_idx])
+                # xx_scatter = [xpos]*len(errors)
+                # ax.scatter(xx_scatter, errors, s=30, color = pparam.CCA_COLORS[label_idx])
                 
             
             
@@ -867,6 +703,11 @@ def quantify_generated_data_cca_single_pair():
                 ax.yaxis.set_tick_params(width=pparam.AXIS_WIDTH, length=pparam.TICKS_LENGTH)    
                 
             fig.tight_layout()
+            
+            save_figure(fig, 'figSIM1_cca_single_pair_example_quantification_%d_aligned_to_%d'%(target_idx+1, ref_idx+1))
+
+            
+            
     else:
         ref_idx = i
         target_idx = (i+1)%2
@@ -893,10 +734,10 @@ def quantify_generated_data_cca_single_pair():
             err = np.std(errors)/np.sqrt(len(errors))
             
             ax.bar(xpos, avg, width=barwidth, alpha=0.7, edgecolor=None, color=pparam.CCA_COLORS[label_idx])
-            ax.errorbar([xpos], avg, yerr=err, fmt='', markersize=35, markeredgewidth=5, elinewidth = 5, zorder=2, color=pparam.CCA_COLORS[label_idx], alpha=0.6)
+            ax.errorbar([xpos], avg, yerr=err, fmt='', markersize=35, markeredgewidth=5, elinewidth = 5, zorder=2, color=pparam.CCA_COLORS[label_idx], alpha=1)
             
-            xx_scatter = [xpos]*len(errors)
-            ax.scatter(xx_scatter, errors, s=30, color = pparam.CCA_COLORS[label_idx])
+            # xx_scatter = [xpos]*len(errors)
+            # ax.scatter(xx_scatter, errors, s=30, color = pparam.CCA_COLORS[label_idx])
             
         
         
@@ -915,7 +756,12 @@ def quantify_generated_data_cca_single_pair():
         fig.tight_layout()
             
 
-def simulated_mCCA_quantification():
+
+
+
+def compare_cca_single_pair_by_pair_type():
+    np.random.seed(5)
+    
     ########## PARAMETERS ###########
     
     #General
@@ -943,112 +789,354 @@ def simulated_mCCA_quantification():
     num_trials = 50 # Number of trials per generated session
     
     ### Firing rate generation
+    
+    pair_type_dict = {}
+    
+    pair_type_dict['Unalignable'] = {'error_std_list':[.1, .1],
+                              'latent_type_list':['deformed circle 1', 'deformed circle double']}
+    
+    pair_type_dict['Difficult'] = {'error_std_list':[1., 1.],
+                                'latent_type_list':['deformed circle twist', 'periodic spiral']}
+    
+    pair_type_dict['Noisy'] = {'error_std_list':[1., 1.],
+                                'latent_type_list':['deformed circle 1', 'noise']}
+    
+    pair_type_dict['Easy'] = {'error_std_list':[1., 1.],
+                                'latent_type_list':['deformed circle 1', 'deformed circle 1']}
+    
+
+  
+    ## Session generation
+    number_of_generated_session_pairs_per_type = 25
+    
+    
+    number_of_sessions_to_align = 2
+    
+    ## Predictor parameters ##
+    cv_folds = 5
+    predictor_name = 'SVR'
+    error_type = 'sse'
+    
+    ## CCA parameters ##
+    CCA_dim = 12
+    return_warped_data = False
+    return_trimmed_data = False
+    sessions_to_align = 'all'
+    cca_shuffle = False
+    warping_bins = 150
+    warp_based_on = 'position'
+    skip_alignment = False
+    
+
+      
+    
 
 
-    ## Probability weights by position for the firing rate generation
-    ## (1) Homogenous
-    firing_rate_position_probs = np.ones(max_pos)/max_pos 
-    
-    ## (2) Reward bias
-    firing_rate_position_probs = np.ones(max_pos) # Probability weights by position for the firing rate generation
-    firing_rate_position_probs[:150] = firing_rate_position_probs[-150:] = 2.
-    firing_rate_position_probs = firing_rate_position_probs / np.sum(firing_rate_position_probs)
-    
-    ## (3) Delete sections
-    firing_rate_position_probs = np.ones(max_pos) # Probability weights by position for the firing rate generation
-    firing_rate_position_probs[250:1250] = 0
-    firing_rate_position_probs = firing_rate_position_probs / np.sum(firing_rate_position_probs)
-    
-    ## Probability weights by position for the firing rate standard deviation
-    ## (1) Homogeneous
-    firing_rate_std_probs = np.ones(max_pos)/max_pos 
-    
-    
-    # ## (2) Small only
-    # firing_rate_std_probs = np.ones(max_pos)
-    # firing_rate_std_probs[250:] = 0
-    # firing_rate_std_probs = firing_rate_std_probs/np.sum(firing_rate_std_probs)
-
-    # ## (3) Small or big
-    # firing_rate_std_probs = np.ones(4*max_pos)
-    # firing_rate_std_probs[250:(4*max_pos - 250)] = 0
-    # firing_rate_std_probs = firing_rate_std_probs/np.sum(firing_rate_std_probs)
-    
-    simulated_type1 = 'gaussian'
-    firing_rate_kwargs1 ={"firing_rate_position_probs":firing_rate_position_probs, "firing_rate_std_probs":firing_rate_std_probs}
-    
-    simulated_type2 = 'gaussian'
-    firing_rate_kwargs2 ={"firing_rate_position_probs":firing_rate_position_probs, "firing_rate_std_probs":firing_rate_std_probs}
-
-    ## Latent parameters    
-    error_std1 = .01
-    error_std2 = .01
-
-    # error_std = np.array([0.05]*max_pos)
-    # error_std[500:1000] = 3.
-    
-    simulated_type1 = 'latent'
-    # latent_type1 = 'deformed circle 3'
-    latent_type1 = 'deformed circle sigmoid 1'
-
-    firing_rate_kwargs1 = {"error_std":error_std1, 'latent_type':latent_type1}
-    
-    simulated_type2 = 'latent'
-    # latent_type2 = 'deformed circle 2'
-    latent_type2 = 'deformed circle twist 2'
-    # latent_type2 = 'deformed circle sigmoid 2'
-
-    firing_rate_kwargs2 = {"error_std":error_std2, 'latent_type':latent_type2}
+    ## Store velocities from real data
+    compute_and_store_velocity_data(trial_bins, session_list_to_train_velocity, time_bin_size, position_bin_size, gaussian_size, 
+                                    data_used, running_to_train_velocity, eliminate_v_zeros=eliminate_v_zeros_to_train_velocity)
     
     
     
 
 
+    performance_results_by_pair = {}
+    example_pca_dicts_by_pair = {}
+
+    #Set up a type of pair to align
+    for pair_type_idx, pair_type in enumerate(pair_type_dict.keys()):
+        
+        
+        latent_type_list = pair_type_dict[pair_type]['latent_type_list']
+        error_std_list = pair_type_dict[pair_type]['error_std_list']
+        simulated_type_list = ['latent', 'latent']    
+        firing_rate_kwargs_list = [{'latent_type':latent_type_list[0]}, {'latent_type':latent_type_list[1]}]
+        
+        #Generate multiple pairs of sessions
+        alignment_performance_list = []
+
+        for npair in range(number_of_generated_session_pairs_per_type):
+        
+            
+        
+            #Generate pair of sessions
+            position_list = []
+            pca_list = []
+            variance_explained_list = []
+            
+            for i in range(number_of_sessions_to_align):
+        
+                ### Create simulated firing rates
+                firing_rate_kwargs = firing_rate_kwargs_list[i]
+                simulated_type = simulated_type_list[i]
+                firing_rate_funs_by_neuron = create_simulated_firing_rates(num_neurons, simulated_type, **firing_rate_kwargs)
+    
+    
+                # ## Generate a session worth of data, position and spikes
+                error_std = error_std_list[i]
+                generate_session_data(dt, num_trials, trial_bins, firing_rate_funs_by_neuron, error_std, session_list_to_train_velocity, plot=False)
+                
+                
+                ## Pre-process generated data
+                data_dict = np.load(OUTPUT_PATH +"generated_session.npy", allow_pickle=True)[()]
+                data_dict = preprocess_generated_data(data_dict, time_bin_size, position_bin_size, gaussian_size, eliminate_v_zeros)
+                pca_input_data = data_dict['amplitudes_binned_normalized']
+                position = data_dict['distance']
+            
+            
+                
+            
+                
+                ## Perform PCA
+                pca = pf.project_spikes_PCA(pca_input_data, num_components = 3)
+                ## Perform PCA
+                pca = decomposition.PCA(n_components=num_neurons)
+                pca.fit(pca_input_data.T)
+                
+                #PCA over time
+                pca_data = pf.project_spikes_PCA(pca_input_data, pca_instance = pca, num_components = num_components)
+                variance_explained = pca.explained_variance_ratio_
+                    
+                position_list.append(position)
+                pca_list.append(pca_data)
+                variance_explained_list.append(variance_explained)
+                
+    
+        
+            
+            #Align the pair of sessions
+        
+            M = number_of_sessions_to_align
+            
+            #Set PCA dimension
+            pca_list = mCCA_funs.set_dimension_of_pca_list(pca_list, CCA_dim, variance_explained_list)
+            
+            #Perform mCCA
+            pos_list_aligned, pca_dict_aligned, mCCA = mCCA_funs.perform_warped_mCCA(position_list, pca_list, max_pos, warping_bins, warp_based_on, 
+                                                                                     return_warped_data, return_trimmed_data, cca_shuffle, skip_alignment)
+        
+            #Normalize PCA after alignment changes
+            pca_dict_aligned = mCCA_funs.normalize_pca_dict_aligned(pca_dict_aligned, mCCA)
+            
+            #Find space with best alignment
+            best_space = mCCA_funs.return_best_mCCA_space(pos_list_aligned, pca_dict_aligned, max_pos=1500, verbose=False)
+            pca_list_aligned = pca_dict_aligned[best_space]
+                        
+            pca_list = [pca_dict_aligned[m][m] for m in range(M)]
+            unaligned_error_array, aligned_error_array, pos_pred_dict = mCCA_funs.get_cross_prediction_errors(pos_list_aligned, pca_list, pos_list_aligned, pca_dict_aligned, 
+                                                                                               max_pos, cv_folds, error_type, predictor_name, return_position_predictions=True)
+            
+            print(unaligned_error_array)
+            print(aligned_error_array)
+            
+            
+            # perf = 0
+            # for target_idx in range(2):
+            #     ref_idx = (target_idx+1)%2
+            #     unaligned_gap = unaligned_error_array[ref_idx, target_idx] - unaligned_error_array[target_idx, target_idx]
+            #     aligned_gap = aligned_error_array[ref_idx, target_idx] - aligned_error_array[target_idx, target_idx]
+            #     perf += 1 - aligned_gap/(1e-8 + unaligned_gap)
+            # perf = perf/2
+            # alignment_performance_list.append(perf)
+            
+            perf_target_idx = 0
+            perf_ref_idx = (perf_target_idx+1)%2
+            unaligned_gap = unaligned_error_array[perf_ref_idx, perf_target_idx] - unaligned_error_array[perf_target_idx, perf_target_idx]
+            aligned_gap = aligned_error_array[perf_ref_idx, perf_target_idx] - aligned_error_array[perf_target_idx, perf_target_idx]
+            perf = 1 - aligned_gap/(1e-8 + unaligned_gap)
+            alignment_performance_list.append(perf)
+            
+            
+    
+            #Save one example to plot
+            if npair == 0:
+                
+                single_example_data_dict = {'pos_list_aligned':pos_list_aligned, 'pca_list':pca_list, 
+                                            'pca_list_aligned':pca_list_aligned}
+                example_pca_dicts_by_pair[pair_type] = single_example_data_dict
+                
+        performance_results_by_pair[pair_type] = alignment_performance_list
+    
+    
+    
+    
+    
+    dict_to_save = {
+        'example_pca_dicts_by_pair':example_pca_dicts_by_pair,
+        'performance_results_by_pair':performance_results_by_pair
+        
+        }
+    
+    label_save = 'figSI1_pair_type_comparison_data'
+    save_data(label_save, dict_to_save)
+    compare_cca_single_pair_by_pair_type_plots()
+    
+    
+    
+def compare_cca_single_pair_by_pair_type_plots():
+    
+    ## Load data
+    label_save = 'figSI1_pair_type_comparison_data'
+    results_dict = load_data(label_save)
+    
+    example_pca_dicts_by_pair = results_dict['example_pca_dicts_by_pair']
+    performance_results_by_pair = results_dict['performance_results_by_pair']
+    pair_type_list_original = list(performance_results_by_pair.keys())
+    pair_type_list_ordered = ['Easy', 'Unalignable', 'Different', 'Noisy']
+    pair_type_list = []
+    for ptype in pair_type_list_ordered:
+        if ptype in pair_type_list_original:
+            pair_type_list.append(ptype)
+    print(performance_results_by_pair)
+    
+    ## Plotting parameters
+    fig_num = 1
+    fs = 15
+    pca_plot_bin_size = 30 #Only used for plotting pca
+    max_pos = pparam.MAX_POS
+    
+    
+    for pair_type_idx, pair_type in enumerate(pair_type_list):
+        single_example_data_dict = example_pca_dicts_by_pair[pair_type]
+        
+        example_pos_list_aligned  = single_example_data_dict['pos_list_aligned']
+        example_pca_list_aligned = single_example_data_dict['pca_list_aligned']
+        
+        angle = 60
+        angle_azim = -140
+        fig, ax = plt.subplots(1, 1, subplot_kw={"projection": "3d"}, figsize=(6,6)); fig_num += 1
+    
+        
+        #Plot aligned PCAs
+        for i in range(2):
+            pca = example_pca_list_aligned[i]
+            position = example_pos_list_aligned[i]
+    
+            position_unique, pca_average, pca_std = pf.compute_average_data_by_position(pca, position, position_bin_size=pca_plot_bin_size, max_pos=max_pos)
+            pf.plot_pca_with_position(pca_average, position_unique, ax=ax, max_pos = pparam.MAX_POS, cmap_name = pparam.PCA_CMAP, fs=15, cbar=False, cbar_label='Position (mm)',
+                                        alpha=1, angle=angle, angle_azim=angle_azim, axis = 'off', show_axis_labels=False, axis_label=None, 
+                                        scatter=False, ms = 250, lw=6)
+        
+        ax.set_title(pair_type, fontsize=30)
+        save_figure(fig, 'figSIM1_cca_pair_comparison_%s'%pair_type)
+
+        
+    #Pair type comparison plot
+    fs = 15
+    pair_type_num = len(performance_results_by_pair)
+    fig, ax = plt.subplots(nrows=1, ncols=1, squeeze=False, figsize=(6,3), num=fig_num)
+    ax = ax[0,0]; fig_num += 1
+    
+    xpos_list = np.arange(pair_type_num)
+    shift = 0.1
+    ymin = 0.5
+    ymax = 0.5
+
+    for pair_type_idx, pair_type in enumerate(pair_type_list):
+
+        # for class_idx, class_label in enumerate(range(2)):
+        perf_list = performance_results_by_pair[pair_type]
+        perf_avg = np.average(perf_list)
+        perf_std = np.std(perf_list)/np.sqrt(len(perf_list))
+        ymin = np.minimum(ymin, perf_avg-perf_std)
+        ymax = np.maximum(ymax, perf_avg+perf_std)
+
+        xx = xpos_list[pair_type_idx]
+        label=pair_type
+
+        color = 'black'
+        ax.errorbar(xx, perf_avg, yerr=perf_std, fmt='_', color=color, alpha=0.9, label=label, 
+                          markersize=20, markeredgewidth=3, elinewidth = 3, zorder=2)
+
+        
+
+    xlabels = pair_type_list
+    ax.set_xticks(xpos_list, xlabels, fontsize=fs)
+    # yticks = [0.00, 0.25, 0.50, 0.75, 1.00]
+    # ax.set_yticks(yticks, yticks, fontsize=fs)
+    ax.set_ylabel("Alignment performance", fontsize=fs)
+    ax.tick_params(axis='y', labelsize=fs)
+    ax.set_ylim([-0.1,1])
+    ax.set_xlim([-0.5, len(pair_type_list)-0.5])
+
+    ax.spines[['right', 'top']].set_visible(False)
+    for axis in ['top','bottom','left','right']:
+        ax.spines[axis].set_linewidth(3)
+    ax.xaxis.set_tick_params(width=3, length=7)
+    ax.yaxis.set_tick_params(width=3, length=7)
+    fig.tight_layout()
+    save_figure(fig, 'figSIM1_cca_pair_comparison_alignment_performance')
+
+    
+
+def simulated_mCCA_quantification():
+    ########## PARAMETERS ###########
+    
+    # np.random.seed(1)
+    
+    #General
+    max_pos = pparam.MAX_POS
+    trial_bins = 30
+       
+    #Data preprocessing
+    time_bin_size = 1  # Number of elements to average over, each dt should be ~65ms
+    position_bin_size = 1  # mm, track is 1500mm, data is in mm
+    gaussian_size = 25  # Why not
+    data_used = 'amplitudes'
+    running = True
+    eliminate_v_zeros = True
+    num_components = 'all'
+    
+    #Velocity generation
+    session_list_to_train_velocity = np.arange(3)
+    session_list_to_train_velocity = [0,1,2]
+    running_to_train_velocity = False #If True, only "running" bins are used in generating data
+    eliminate_v_zeros_to_train_velocity = False
+    
+    ### Position generation
+    dt = 0.01 # time interval, in seconds
+    num_neurons = 40 # Number of neurons
+    num_trials = 20 # Number of trials per generated session
+    
+    ### Firing rate and session generation
 
     ## Session 
-    mice_num = 5
+    mice_num = 25
     B_session_num = 3
     T_session_num = 4
     P_session_num = 2
     session_num = B_session_num + T_session_num + P_session_num
     
-    simulated_type_list = [simulated_type1] * B_session_num + [simulated_type2]*T_session_num + [simulated_type1]*P_session_num
-    firing_rate_kwargs_list = [firing_rate_kwargs1] * B_session_num + [firing_rate_kwargs2]*T_session_num + [firing_rate_kwargs1]*P_session_num
+    # simulated_type_list = [simulated_type1] * B_session_num + [simulated_type2]*T_session_num + [simulated_type1]*P_session_num
+    # firing_rate_kwargs_list = [firing_rate_kwargs1] * B_session_num + [firing_rate_kwargs2]*T_session_num + [firing_rate_kwargs1]*P_session_num
+    
+    # error_std, latent space params
+    session_params_list_1 = [(10., {'latent_type':'deformed circle 1'}),
+                             (10., {'latent_type':'deformed circle 1'}),
+                             (10., {'latent_type':'deformed circle 1'}),
+                             (5, {'latent_type':'deformed circle 2'}),
+                             (1., {'latent_type':'deformed circle 2'}),
+                             (1., {'latent_type':'deformed circle 2'}),
+                             (1., {'latent_type':'deformed circle 2'}),
+                             (1., {'latent_type':'deformed circle 1'}),
+                             (1., {'latent_type':'deformed circle 1'})]
+    
+    session_params_list_2 = [(1., {'latent_type':'deformed circle 1'}),
+                             (1., {'latent_type':'deformed circle 1'}),
+                             (1., {'latent_type':'deformed circle 1'}),
+                             (1., {'latent_type':'deformed circle 2'}),
+                             (1., {'latent_type':'deformed circle 2'}),
+                             (1., {'latent_type':'deformed circle 2'}),
+                             (1., {'latent_type':'deformed circle 2'}),
+                             (1., {'latent_type':'deformed circle 1'}),
+                             (1., {'latent_type':'deformed circle 1'})]
     
     
-    simulated_type_list = ['latent'] * (B_session_num + T_session_num + P_session_num)
-    # firing_rate_kwargs_list = [{"error_std":1., 'latent_type':'deformed circle 1'},
-    #                             {"error_std":1., 'latent_type':'deformed circle 1'},
-    #                             {"error_std":1., 'latent_type':'deformed circle 1'},
-    #                             {"error_std":1., 'latent_type':'deformed circle 2'},
-    #                             {"error_std":1., 'latent_type':'deformed circle 2'},
-    #                             {"error_std":1., 'latent_type':'deformed circle 2'},
-    #                             {"error_std":1., 'latent_type':'deformed circle 2'},
-    #                             {"error_std":1., 'latent_type':'deformed circle 1'},
-    #                             {"error_std":1., 'latent_type':'deformed circle 1'},
-    #                             ]
+
     
-    firing_rate_kwargs_list = [{"error_std":10., 'latent_type':'deformed circle 1'},
-                                {"error_std":10., 'latent_type':'deformed circle 1'},
-                                {"error_std":10., 'latent_type':'deformed circle 1'},
-                                {"error_std":5., 'latent_type':'deformed circle 2'},
-                                {"error_std":1., 'latent_type':'deformed circle 2'},
-                                {"error_std":1., 'latent_type':'deformed circle 2'},
-                                {"error_std":1., 'latent_type':'deformed circle 2'},
-                                {"error_std":1., 'latent_type':'deformed circle 1'},
-                                {"error_std":1., 'latent_type':'deformed circle 1'},
-                                ]
+    session_params_lists = [session_params_list_1, session_params_list_2]
     
-    
-    # firing_rate_kwargs_list = [{"error_std":1., 'latent_type':'deformed circle twist 2'},
-    #                            {"error_std":1., 'latent_type':'noise'},
-    #                            {"error_std":1., 'latent_type':'deformed circle twist'},
-    #                            {"error_std":1., 'latent_type':'deformed circle twist'},
-    #                            {"error_std":1., 'latent_type':'periodic spiral'},
-    #                            {"error_std":1., 'latent_type':'deformed circle twist 2'},
-    #                            {"error_std":1., 'latent_type':'periodic spiral'},
-    #                            ]
-    
+
     ## Predictor parameters ##
     cv_folds = 5
     predictor_name = 'SVR'
@@ -1063,26 +1151,7 @@ def simulated_mCCA_quantification():
     warping_bins = 150
     warp_based_on = 'position'
     skip_alignment = False
-    
-    ## TCA params ##
-    TCA_method = "ncp_hals" #"cp_als", "mcp_als", "ncp_bcd", "ncp_hals"
-    TCA_factors = 'max' #int, or 'max' to get the maximum possible (determined by CCA)
-    TCA_replicates = 10
-    TCA_convergence_attempts = 10 #Number of times TCA can fail before giving up
-    TCA_on_LDA_repetitions =20
-    
-    ## LDA params ##
-    LDA_components = 1
-    LDA_imbalance_prop = .51
-    LDA_imbalance_repetitions = 10
-    LDA_trial_shuffles = 0
-    LDA_session_shuffles = 0
-    session_comparisons = 'BT' #'airpuff', 'BT', 'TP', 'BP'
-    
-    ## Plotting parameters
-    fig_num = 1
-    fs = 15
-    pca_plot_bin_size = 50 #Only used for plotting pca
+
     
     ## Store velocities from real data
     compute_and_store_velocity_data(trial_bins, session_list_to_train_velocity, time_bin_size, position_bin_size, gaussian_size, 
@@ -1090,272 +1159,286 @@ def simulated_mCCA_quantification():
     
     
 
+    mcca_example_dict_list = []
+    error_arrays_total_list = []
     
-    #Generate multiple pairs of sessions    
-    unaligned_error_array_total = np.zeros((session_num, session_num, 0))
-    aligned_error_array_total = np.zeros((session_num, session_num, 0))
+    for session_params_list_idx, session_params_list in enumerate(session_params_lists):
     
-    
-        
-    for mnum in range(mice_num):
-        #Generate list of sessions
-        position_list = []
-        pca_list = []
-        variance_explained_list = []
-        
-        for i in range(session_num):
-    
-            ### Create simulated firing rates
-            firing_rate_kwargs = firing_rate_kwargs_list[i]
-            simulated_type = simulated_type_list[i]
-            firing_rate_funs_by_neuron = create_simulated_firing_rates(num_neurons, simulated_type, **firing_rate_kwargs)
-    
-    
-            # ## Generate a session worth of data, position and spikes
-            generate_session_data(dt, num_trials, trial_bins, firing_rate_funs_by_neuron, session_list_to_train_velocity, plot=False)
-            
-            
-            ## Pre-process generated data
-            data_dict = np.load(OUTPUT_PATH +"generated_session.npy", allow_pickle=True)[()]
-            data_dict = preprocess_generated_data(data_dict, time_bin_size, position_bin_size, gaussian_size, eliminate_v_zeros)
-            pca_input_data = data_dict['amplitudes_binned_normalized']
-            position = data_dict['distance']
+        #Generate multiple pairs of sessions    
+        unaligned_error_array_total = np.zeros((session_num, session_num, 0))
+        aligned_error_array_total = np.zeros((session_num, session_num, 0))
         
         
             
+        for mnum in range(mice_num):
+            #Generate list of sessions
+            position_list = []
+            pca_list = []
+            variance_explained_list = []
+            
+            for i in range(session_num):
         
-            
-            ## Perform PCA
-            pca = pf.project_spikes_PCA(pca_input_data, num_components = 3)
-            ## Perform PCA
-            pca = decomposition.PCA(n_components=num_neurons)
-            pca.fit(pca_input_data.T)
-            
-            #PCA over time
-            pca_data = pf.project_spikes_PCA(pca_input_data, pca_instance = pca, num_components = num_components)
-            variance_explained = pca.explained_variance_ratio_
+                ### Create simulated firing rates
+                error_std = session_params_list[i][0]
+                firing_rate_kwargs = session_params_list[i][1]
+                simulated_type = 'latent'
+                firing_rate_funs_by_neuron = create_simulated_firing_rates(num_neurons, simulated_type, **firing_rate_kwargs)
+        
+        
+                # ## Generate a session worth of data, position and spikes
+                generate_session_data(dt, num_trials, trial_bins, firing_rate_funs_by_neuron, error_std, session_list_to_train_velocity, plot=False)
                 
-            position_list.append(position)
-            pca_list.append(pca_data)
-            variance_explained_list.append(variance_explained)
-            
-    
-    
-        
-        #Align the list of sessions
-    
-        M = session_num
-        
-        #Set PCA dimension
-        pca_list = mCCA_funs.set_dimension_of_pca_list(pca_list, CCA_dim, variance_explained_list)
-        
-        #Perform mCCA
-        pos_list_aligned, pca_dict_aligned, mCCA = mCCA_funs.perform_warped_mCCA(position_list, pca_list, max_pos, warping_bins, warp_based_on, 
-                                                                                 return_warped_data, return_trimmed_data, cca_shuffle, skip_alignment)
-    
-        #Normalize PCA after alignment changes
-        pca_dict_aligned = mCCA_funs.normalize_pca_dict_aligned(pca_dict_aligned, mCCA)
-        
-        #Find space with best alignment
-        best_space = mCCA_funs.return_best_mCCA_space(pos_list_aligned, pca_dict_aligned, max_pos=1500, verbose=False)
-        pca_list_aligned = pca_dict_aligned[best_space]
-                    
-        pca_list_unaligned = [pca_dict_aligned[m][m] for m in range(M)]
-        unaligned_error_array, aligned_error_array = mCCA_funs.get_cross_prediction_errors(pos_list_aligned, pca_list_unaligned, pos_list_aligned, pca_dict_aligned, 
-                                                                                           max_pos, cv_folds, error_type, predictor_name)
-        
-
-        
-        
-        unaligned_error_array_total = np.dstack((unaligned_error_array_total, unaligned_error_array))
-        aligned_error_array_total = np.dstack((aligned_error_array_total, aligned_error_array))
-            
-        
-        if mnum == 0:
-            ## Plot unaligned vs aligned sessions
-            
-            fig_CCAcomp, axs_CCAcomp = plt.subplots(nrows=1, ncols = 2, squeeze=False, figsize=(5,3), num=fig_num, subplot_kw={'projection':'3d'})
-            # fig_CCAcomp, axs_CCAcomp = plt.subplots(nrows=2, ncols = 2, squeeze=False, figsize=subfig_b_size, num=fig_num)
-        
-            fig_num += 1
-            
-            subplot_counter = 0
-            for alignment_idx in range(2): #0 is unaligned, 1 is aligned
                 
-                ax = axs_CCAcomp.ravel()[alignment_idx]
-                if alignment_idx == 0:
-                    pca_list = pca_list_unaligned
-                elif alignment_idx == 1:
-                    pca_list = pca_list_aligned
+                ## Pre-process generated data
+                data_dict = np.load(OUTPUT_PATH +"generated_session.npy", allow_pickle=True)[()]
+                data_dict = preprocess_generated_data(data_dict, time_bin_size, position_bin_size, gaussian_size, eliminate_v_zeros)
+                pca_input_data = data_dict['amplitudes_binned_normalized']
+                position = data_dict['distance']
+            
+            
+                
+            
+                
+                ## Perform PCA
+                pca = pf.project_spikes_PCA(pca_input_data, num_components = 3)
+                ## Perform PCA
+                pca = decomposition.PCA(n_components=num_neurons)
+                pca.fit(pca_input_data.T)
+                
+                #PCA over time
+                pca_data = pf.project_spikes_PCA(pca_input_data, pca_instance = pca, num_components = num_components)
+                variance_explained = pca.explained_variance_ratio_
                     
-                pos_list = pos_list_aligned
-                num_sessions = len(pca_list)
-                for sidx in range(num_sessions):
-                    pca = pca_list[sidx]
-                    pos = pos_list[sidx]
-                    pos_bins, pca_avg, _ = pf.compute_average_data_by_position(pca, pos, position_bin_size=pca_plot_bin_size)
-                    pf.plot_pca_with_position(pca_avg, pos_bins, ax=ax, scatter=False, cbar=None, 
-                                              angle = None, angle_azim = None)
-                subplot_counter += 1    
+                position_list.append(position)
+                pca_list.append(pca_data)
+                variance_explained_list.append(variance_explained)
+                
+        
+        
+            
+            #Align the list of sessions
+        
+            M = session_num
+            
+            #Set PCA dimension
+            pca_list = mCCA_funs.set_dimension_of_pca_list(pca_list, CCA_dim, variance_explained_list)
+            
+            #Perform mCCA
+            pos_list_aligned, pca_dict_aligned, mCCA = mCCA_funs.perform_warped_mCCA(position_list, pca_list, max_pos, warping_bins, warp_based_on, 
+                                                                                     return_warped_data, return_trimmed_data, cca_shuffle, skip_alignment)
+        
+            #Normalize PCA after alignment changes
+            pca_dict_aligned = mCCA_funs.normalize_pca_dict_aligned(pca_dict_aligned, mCCA)
+            
+            #Find space with best alignment
+            best_space = mCCA_funs.return_best_mCCA_space(pos_list_aligned, pca_dict_aligned, max_pos=1500, verbose=False)
+            pca_list_aligned = pca_dict_aligned[best_space]
                         
-            fig_CCAcomp.tight_layout()
+            pca_list_unaligned = [pca_dict_aligned[m][m] for m in range(M)]
+            unaligned_error_array, aligned_error_array = mCCA_funs.get_cross_prediction_errors(pos_list_aligned, pca_list_unaligned, pos_list_aligned, pca_dict_aligned, 
+                                                                                               max_pos, cv_folds, error_type, predictor_name)
             
-            
-            fig_CCAmap, axs_CCAmap = plt.subplots(1, 2, num=fig_num, figsize=(6,4)); fig_num += 1
     
-    ## Plot colormap of unaligned vs aligned
-    unaligned_error_array_avg = np.average(unaligned_error_array_total, axis=2)        
-    aligned_error_array_avg = np.average(aligned_error_array_total, axis=2)        
+            
+            
+            unaligned_error_array_total = np.dstack((unaligned_error_array_total, unaligned_error_array))
+            aligned_error_array_total = np.dstack((aligned_error_array_total, aligned_error_array))
+            
+                
+            
+            if mnum == 0:
+                ## Store one example of unaligned vs aligned sessions
+                mcca_example_dict = {'pos_list_aligned':pos_list_aligned, 'pca_list_unaligned':pca_list_unaligned, 'pca_list_aligned':pca_list_aligned}
+                mcca_example_dict_list.append(mcca_example_dict)
+                
+                # ## Plot unaligned vs aligned sessions
+            
+        error_arrays_total_list.append([unaligned_error_array_total, aligned_error_array_total])
+            
+            
+    dict_to_save = {
+        'mcca_example_dict_list':mcca_example_dict_list,
+        'error_arrays_total_list':error_arrays_total_list
+        
+        }
+    
+    label_save = 'figSI1_simulated_mcca_data'
+    save_data(label_save, dict_to_save)
+    
+    simulated_mCCA_quantification_plots()
+    
+def simulated_mCCA_quantification_plots():
+    
 
-    plot_data_list = [unaligned_error_array_avg, aligned_error_array_avg]
-    min_error = np.min([np.min(error_array) for error_array in plot_data_list])
-    max_error = np.max([np.max(error_array) for error_array in plot_data_list])
-    title_list = ['Unaligned', 'Aligned']
-    session_list = np.arange(num_sessions)
+    ## Load data
+    label_save = 'figSI1_simulated_mcca_data'
+    results_dict = load_data(label_save)
+    
+    mcca_example_dict_list = results_dict['mcca_example_dict_list']
+    error_arrays_total_list = results_dict['error_arrays_total_list']
+    number_of_session_lists = len(error_arrays_total_list)
+    
+    ## Plotting parameters
+    fig_num = 1
     fs = 15
-    for alignment_idx in range(2):
-        ax = axs_CCAmap.ravel()[alignment_idx]
-        data = plot_data_list[alignment_idx]
-        ax.imshow(data, cmap=pparam.ERROR_CMAP, interpolation='nearest', vmin=min_error, vmax=max_error)
-        snames = [SESSION_NAMES[s] for s in session_list]
-        ax.set_xticks(range(num_sessions), snames, fontsize=fs)
-        ax.set_yticks(range(num_sessions), snames, fontsize=fs)
-        ax.set_title(title_list[alignment_idx], fontsize = fs+6, pad=10)
-        for m in range(num_sessions):
-            ax.add_patch(Rectangle((m-0.5, m-0.5), 1, 1, fill=False, edgecolor='indianred', lw=3))
+    pca_plot_bin_size = 30 #Only used for plotting pca
+    # max_pos = pparam.MAX_POS
+    # number_of_sessions_to_align = 2
+    
+    
+    for session_list_idx in range(number_of_session_lists):
         
+    
+    
+        ## Plot unaligned vs aligned sessions
+        mcca_example_dict = mcca_example_dict_list[session_list_idx]
+        pos_list_aligned = mcca_example_dict['pos_list_aligned']
+        pca_list_unaligned = mcca_example_dict['pca_list_unaligned']
+        pca_list_aligned = mcca_example_dict['pca_list_aligned']
         
-    # axs_CCAmap[0,0].annotate('CA3 i-D', xy=(0, 0.5), xytext=(170, 180), fontsize=20, xycoords='axes points')
-    # axs_CCAmap[1,0].annotate('CA3 D-D', xy=(0, 0.5), xytext=(170, 175), fontsize=20, xycoords='axes points')            
+        fig_CCAcomp, axs_CCAcomp = plt.subplots(nrows=1, ncols = 2, squeeze=False, figsize=(5,3), num=fig_num, subplot_kw={'projection':'3d'})
+        # fig_CCAcomp, axs_CCAcomp = plt.subplots(nrows=2, ncols = 2, squeeze=False, figsize=subfig_b_size, num=fig_num)
+    
+        fig_num += 1
+        
+        subplot_counter = 0
+        for alignment_idx in range(2): #0 is unaligned, 1 is aligned
+            
+            ax = axs_CCAcomp.ravel()[alignment_idx]
+            if alignment_idx == 0:
+                pca_list = pca_list_unaligned
+            elif alignment_idx == 1:
+                pca_list = pca_list_aligned
+                
+            pos_list = pos_list_aligned
+            num_sessions = len(pca_list)
+            for sidx in range(num_sessions):
+                pca = pca_list[sidx]
+                pos = pos_list[sidx]
+                pos_bins, pca_avg, _ = pf.compute_average_data_by_position(pca, pos, position_bin_size=pca_plot_bin_size)
+                pf.plot_pca_with_position(pca_avg, pos_bins, ax=ax, scatter=False, cbar=None, 
+                                          angle = None, angle_azim = None)
+            subplot_counter += 1    
+                    
+        fig_CCAcomp.tight_layout()
+        save_figure(fig_CCAcomp, 'figSIM1_mcca_pcas_%d'%session_list_idx)
 
         
-    axs_CCAmap[0].set_ylabel('Trained on', fontsize=fs+4)
-    axs_CCAmap[1].set_xlabel('Predicted on', fontsize=fs+4)
+        fig_CCAmap, axs_CCAmap = plt.subplots(1, 2, num=fig_num, figsize=(6,4)); fig_num += 1
+        
+        
+        unaligned_error_array_total, aligned_error_array_total = error_arrays_total_list[session_list_idx]
+
+        
+        
+        ## Plot colormap of unaligned vs aligned
+        unaligned_error_array_avg = np.average(unaligned_error_array_total, axis=2)        
+        aligned_error_array_avg = np.average(aligned_error_array_total, axis=2)        
     
+        plot_data_list = [unaligned_error_array_avg, aligned_error_array_avg]
+        min_error = np.min([np.min(error_array) for error_array in plot_data_list])
+        max_error = np.max([np.max(error_array) for error_array in plot_data_list])
+        title_list = ['Unaligned', 'Aligned']
+        session_list = np.arange(num_sessions)
+        fs = 15
+        for alignment_idx in range(2):
+            ax = axs_CCAmap.ravel()[alignment_idx]
+            data = plot_data_list[alignment_idx]
+            ax.imshow(data, cmap=pparam.ERROR_CMAP, interpolation='nearest', vmin=min_error, vmax=max_error)
+            snames = [SESSION_NAMES[s] for s in session_list]
+            ax.set_xticks(range(num_sessions), snames, fontsize=fs)
+            ax.set_yticks(range(num_sessions), snames, fontsize=fs)
+            ax.set_title(title_list[alignment_idx], fontsize = fs+6, pad=10)
+            for m in range(num_sessions):
+                ax.add_patch(Rectangle((m-0.5, m-0.5), 1, 1, fill=False, edgecolor='indianred', lw=3))
+            
+            
+        # axs_CCAmap[0,0].annotate('CA3 i-D', xy=(0, 0.5), xytext=(170, 180), fontsize=20, xycoords='axes points')
+        # axs_CCAmap[1,0].annotate('CA3 D-D', xy=(0, 0.5), xytext=(170, 175), fontsize=20, xycoords='axes points')            
     
-    fig_CCAmap.subplots_adjust(right=0.90)
-    cbar_ax = fig_CCAmap.add_axes([1.05, 0.17, 0.035, 0.7])    
-    norm = mpl.colors.Normalize(vmin=0, vmax=max_error)    
-    cbar = fig_CCAmap.colorbar(mpl.cm.ScalarMappable(norm=norm, cmap=pparam.ERROR_CMAP), cax=cbar_ax, orientation='vertical', fraction=0.01)
-    cbar.ax.set_ylabel('Prediction error (cm)', fontsize=fs+7, rotation=270, labelpad=25)    
-    cbar.ax.tick_params(axis='both', which='major', labelsize=fs+5)    
+            
+        axs_CCAmap[0].set_ylabel('Trained on', fontsize=fs+4)
+        axs_CCAmap[1].set_xlabel('Predicted on', fontsize=fs+4)
+        
+        
+        fig_CCAmap.subplots_adjust(right=0.90)
+        cbar_ax = fig_CCAmap.add_axes([1.05, 0.17, 0.035, 0.7])    
+        norm = mpl.colors.Normalize(vmin=0, vmax=max_error)    
+        cbar = fig_CCAmap.colorbar(mpl.cm.ScalarMappable(norm=norm, cmap=pparam.ERROR_CMAP), cax=cbar_ax, orientation='vertical', fraction=0.01)
+        cbar.ax.set_ylabel('Prediction error (cm)', fontsize=fs+7, rotation=270, labelpad=25)    
+        cbar.ax.tick_params(axis='both', which='major', labelsize=fs+5)    
+        
+        fig_CCAmap.subplots_adjust(wspace=0, hspace=0)
+        fig_CCAmap.tight_layout()
+        save_figure(fig_CCAmap, 'figSIM1_mcca_colormap_%d'%session_list_idx)
+
+        
     
-    fig_CCAmap.subplots_adjust(wspace=0, hspace=0)
-    fig_CCAmap.tight_layout()
-    
-    
-    
-    ## Barplot of alignment errors
-    
-    fig = plt.figure(num=fig_num, figsize=(4,4)); fig_num += 1
+        
+    fig_CCAavg = plt.figure(num=fig_num, figsize=(5,4)); fig_num += 1
     ax  = plt.gca()
-    all_bars_width = .8
-    num_of_bars = 1
+    all_bars_width = 0.5
+    num_of_bars = 3
     barwidth = all_bars_width/(num_of_bars)
+    xlabels_pos_list = [0, 1]
+    
     cca_labels = pparam.CCA_LABELS[:3]
-    xpos_list = np.arange(len(cca_labels))
     
+    fs = 20
 
-    for label_idx, label in enumerate(cca_labels):
-        xpos = xpos_list[label_idx]
-        if label == 'Self':
-            errors = unaligned_error_array_total.diagonal()
-        elif label == 'Unaligned':
-            errors = unaligned_error_array_total
-            errors = errors[np.where(~np.eye(errors.shape[0], dtype=bool))]
-        elif label == 'Aligned':
-            errors = aligned_error_array_total
-            errors = errors[np.where(~np.eye(errors.shape[0], dtype=bool))]
-        errors = errors.ravel()
-        avg = np.average(errors)
-        # err = scipy.stats.sem(errors) ## Change also height in significance!
-        err = np.std(errors)/np.sqrt(len(errors))
-        
-        ax.bar(xpos, avg, width=barwidth, alpha=0.7, edgecolor=None, color=pparam.CCA_COLORS[label_idx])
-        ax.errorbar([xpos], avg, yerr=err, fmt='', markersize=35, markeredgewidth=5, elinewidth = 5, zorder=2, color=pparam.CCA_COLORS[label_idx], alpha=0.6)
-        
-        # xx_scatter = [xpos]*len(errors)
-        # ax.scatter(xx_scatter, errors, s=30, color = pparam.CCA_COLORS[label_idx])
-        
-    
-    
-        
-    xlabels = cca_labels
-    ax.set_xticks(xpos_list, xlabels, fontsize=fs)
+    for session_list_idx in range(number_of_session_lists):
+        unaligned_error_array_total, aligned_error_array_total = error_arrays_total_list[session_list_idx]
+
+        xpos_ref = xlabels_pos_list[session_list_idx]
+        xpos_list = []
+        for label_idx, label in enumerate(cca_labels):
+            # errors = error_by_alignment_dict[mouse_type_label, label]
+            if label == 'Self':
+                errors = unaligned_error_array_total.diagonal()
+            elif label == 'Unaligned':
+                errors = unaligned_error_array_total
+                errors = errors[np.where(~np.eye(errors.shape[0], dtype=bool))]
+            elif label == 'Aligned':
+                errors = aligned_error_array_total
+                errors = errors[np.where(~np.eye(errors.shape[0], dtype=bool))]
+            
+            
+            xpos = xpos_ref - all_bars_width*0.5 + barwidth * (0.5+label_idx)
+            avg = np.average(errors)
+            err = np.std(errors)/len(errors) ## Change also height in significance!
+            # err = scipy.stats.sem(errors) ## Change also height in significance!
+            # print(xpos, avg, err)
+
+            pltlabel = [None, label][session_list_idx==0]
+            ax.bar(xpos, avg, width=barwidth, alpha=0.7, edgecolor=None, color=pparam.CCA_COLORS[label_idx], label=pltlabel)
+            ax.errorbar([xpos], avg, yerr=err, fmt='', markersize=35, markeredgewidth=5, elinewidth = 5, zorder=2, color=pparam.CCA_COLORS[label_idx], alpha=0.6)
+            
+            xpos_list.append(xpos)
+
+
+    xlabels = ['Low noise', 'Early noise']
+    ax.set_xticks(xlabels_pos_list, xlabels, fontsize=fs)
     ax.set_ylabel('Error (cm)', fontsize=fs)
     ax.tick_params(axis='y', which='major', labelsize=fs)
+    ax.legend(fontsize=15, frameon=False)
     
     ax.spines[['right', 'top']].set_visible(False)
     for axis in ['top','bottom','left','right']:
         ax.spines[axis].set_linewidth(3)
-        ax.xaxis.set_tick_params(width=pparam.AXIS_WIDTH, length=pparam.TICKS_LENGTH)
-        ax.yaxis.set_tick_params(width=pparam.AXIS_WIDTH, length=pparam.TICKS_LENGTH)    
-        
-    fig.tight_layout()
+    ax.xaxis.set_tick_params(width=3, length=7)
+    ax.yaxis.set_tick_params(width=3, length=7) 
+    fig_CCAavg.tight_layout()
+    save_figure(fig_CCAavg, 'figSIM1_mcca_barplot_results')
+
     
     
     return 
-    #Airpuff TCA decoding
-    
-    # session_list = CCA_analysis_dict[mnum, 'session_list']
-    # pos_list = CCA_analysis_dict[mnum, 'pos']
-    # pca_list = CCA_analysis_dict[mnum, 'pca']
-    # pca_list = CCA_analysis_dict[mnum, 'pca_unaligned']
-    session_list = np.arange(session_num)
-    pos_list = pos_list_aligned
-            
-    data_by_trial, pos_by_trial, snum_by_trial = pf.reshape_pca_list_by_trial(pca_list, pos_list, warping_bins, session_list)
-    num_features, num_bins, total_trials = data_by_trial.shape
-    num_CCA_dims = num_features
-    if TCA_factors == 'max':
-        num_TCA_dims = num_CCA_dims
-    else:
-        num_TCA_dims = int(TCA_factors)
-    print('Performing TCA+LDA on M%d // CCA dim: %d, // TCA dim: %d' %(1, num_CCA_dims, num_TCA_dims))       
-        
-    #Selecting trials to decode
-    trials_to_keep, label_by_trial = APfuns.get_trials_to_keep_and_labels(snum_by_trial, session_comparisons)
-    num_trials_to_keep = len(label_by_trial)
-    
-    
-    label_by_trial_predicted = np.zeros((0, num_trials_to_keep), dtype=int) #1st axis is TCA repetition, 2nd is trial
-    
-    plotted_factors = False
-    while plotted_factors == False:
-        # Step 4: TCA
-        KTensor = APfuns.perform_TCA(data_by_trial, num_TCA_dims, TCA_replicates, 
-                                     TCA_method, TCA_convergence_attempts)
-        feature_factors_temp, time_factors_temp, trial_factors_temp = KTensor
-        LDA_input = trial_factors_temp[trials_to_keep]           
 
-        #LDA on TCA factors
-        # LDA_results_dict = APfuns.perform_LDA(LDA_input, label_by_trial, LDA_components, LDA_imbalance_prop, LDA_imbalance_repetitions)
-        
-        
-        
-        LDA = LinearDiscriminantAnalysis(solver="eigen", #svd, lsqr, eigen
-                                          shrinkage=0,  #None, "auto", float 0-1
-                                          n_components=LDA_components, #Dimensionality reduction
-                                          store_covariance=False #Only useful for svd, which doesn't automatically calculate it
-                                          )
-        try:
-            LDA.fit(LDA_input, label_by_trial)
-        except np.linalg.LinAlgError:
-            continue
-        
-        label_by_trial_predicted = (LDA.predict(LDA_input))
-        f1 = np.average(pf.multiclass_f1(label_by_trial, label_by_trial_predicted))
-    
-        trial_factors_LDA_projection = np.squeeze(LDA.transform(LDA_input))
-        fig, ax = APfuns.plot_LDA_projection(trial_factors_LDA_projection, label_by_trial, snum_by_trial=snum_by_trial, plot_legend=True, ax=None)
-        
-        ax.set_title('M%d, F1 = %.1f'%(1, f1), fontsize=15)
-        fig_name = 'fig3_B_LDA_example_M%d'%1
-        plotted_factors = True
 
     
 def CCA_by_dimensionality():
     ########## PARAMETERS ###########
+    np.random.seed(10)
     
     #General
     max_pos = pparam.MAX_POS
@@ -1380,83 +1463,33 @@ def CCA_by_dimensionality():
     dt = 0.01 # time interval, in seconds
     # num_neurons = 50 # Number of neurons
     num_neurons_list = [5, 7, 10, 15, 25, 50, 75, 100]
-    # num_neurons_list = [5, 10, 25]
+    # num_neurons_list = [10, 20]
+    # num_neurons_list = [40, 50]
 
     num_trials = 50 # Number of trials per generated session
     
     ### Firing rate generation
 
+    ## Latent parameters
+    error_std_pair1 = [1., 1.]  
+    firing_rate_kwargs_pair1 = [{'latent_type':'deformed circle 1'}, {'latent_type':'deformed circle 2'}]
 
-    ## Probability weights by position for the firing rate generation
-    ## (1) Homogenous
-    firing_rate_position_probs = np.ones(max_pos)/max_pos 
+    error_std_pair2 = [1., 1.]  
+    firing_rate_kwargs_pair2 = [{'latent_type':'deformed circle twist'}, {'latent_type':'periodic spiral'}]
     
-    ## (2) Reward bias
-    firing_rate_position_probs = np.ones(max_pos) # Probability weights by position for the firing rate generation
-    firing_rate_position_probs[:150] = firing_rate_position_probs[-150:] = 2.
-    firing_rate_position_probs = firing_rate_position_probs / np.sum(firing_rate_position_probs)
-    
-    ## (3) Delete sections
-    firing_rate_position_probs = np.ones(max_pos) # Probability weights by position for the firing rate generation
-    firing_rate_position_probs[250:1250] = 0
-    firing_rate_position_probs = firing_rate_position_probs / np.sum(firing_rate_position_probs)
-    
-    ## Probability weights by position for the firing rate standard deviation
-    ## (1) Homogeneous
-    firing_rate_std_probs = np.ones(max_pos)/max_pos 
-    
-    
-    # ## (2) Small only
-    # firing_rate_std_probs = np.ones(max_pos)
-    # firing_rate_std_probs[250:] = 0
-    # firing_rate_std_probs = firing_rate_std_probs/np.sum(firing_rate_std_probs)
-
-    # ## (3) Small or big
-    # firing_rate_std_probs = np.ones(4*max_pos)
-    # firing_rate_std_probs[250:(4*max_pos - 250)] = 0
-    # firing_rate_std_probs = firing_rate_std_probs/np.sum(firing_rate_std_probs)
-    
-    simulated_type1 = 'gaussian'
-    firing_rate_kwargs1 ={"firing_rate_position_probs":firing_rate_position_probs, "firing_rate_std_probs":firing_rate_std_probs}
-    
-    simulated_type2 = 'gaussian'
-    firing_rate_kwargs2 ={"firing_rate_position_probs":firing_rate_position_probs, "firing_rate_std_probs":firing_rate_std_probs}
-
-    ## Latent parameters    
-    error_std1 = .1
-    error_std2 = .1
-
-    # error_std = np.array([0.05]*max_pos)
-    # error_std[500:1000] = 3.
-    
-    simulated_type1 = 'latent'
-    latent_type1 = 'deformed circle 1'
-    # latent_type1 = 'deformed circle twist 2'
-
-    firing_rate_kwargs1 = {"error_std":error_std1, 'latent_type':latent_type1}
-    
-    simulated_type2 = 'latent'
-    latent_type2 = 'deformed circle 2'
-    # latent_type2 = 'deformed circle double'
-    # latent_type2 = 'periodic spiral'
-    # latent_type2 = 'noise'
-    # latent_type2 = 'deformed circle double'
-
-    firing_rate_kwargs2 = {"error_std":error_std2, 'latent_type':latent_type2}
-    
-    
-    
-    simulated_type_list = [simulated_type1, simulated_type2]    
-    firing_rate_kwargs_list = [firing_rate_kwargs1, firing_rate_kwargs2]
+    pair_type_list = ['Easy', 'Difficult']
+    # pair_type_list = ['Easy']
+    error_std_pair_list = [error_std_pair1, error_std_pair2]
+    firing_rate_kwargs_pair_list = [firing_rate_kwargs_pair1, firing_rate_kwargs_pair2]
 
 
     ## Session generation
     number_of_generated_session_pairs = 25
-    number_of_sessions_to_align = len(simulated_type_list)
+    number_of_sessions_to_align = 2
     
     ## Predictor parameters ##
     cv_folds = 5
-    predictor_name = 'Wiener'
+    predictor_name = 'SVR'
     error_type = 'sse'
     
     ## CCA parameters ##
@@ -1481,176 +1514,187 @@ def CCA_by_dimensionality():
     
 
     
+    alignment_performance_by_neuron_dict = {}
     
-    
-    alignment_performance_by_neuron_num = []
-    
-    for neuron_num_idx, num_neurons in enumerate(num_neurons_list):
+    for pair_type_idx, pair_type in enumerate(pair_type_list):
         
-        #Generate multiple pairs of sessions
-        self_error_list = []
-        unaligned_error_list = []
-        aligned_error_list = []
+        alignment_performance_by_neuron_num = []
         
-        self_error_array_total = np.zeros((number_of_sessions_to_align,0))
-        unaligned_error_array_total = np.zeros((number_of_sessions_to_align,number_of_sessions_to_align,0))
-        aligned_error_array_total = np.zeros((number_of_sessions_to_align,number_of_sessions_to_align,0))
-        
-        
-        alignment_performance_list = []
-        for npair in range(number_of_generated_session_pairs):
-        
+        for neuron_num_idx, num_neurons in enumerate(num_neurons_list):
             
-            successful_run = False
-            while successful_run == False:
+            #Generate multiple pairs of sessions
+            alignment_performance_list = []
+            for npair in range(number_of_generated_session_pairs):
+                error_std_list = error_std_pair_list[pair_type_idx]
+                firing_rate_kwargs_list = firing_rate_kwargs_pair_list[pair_type_idx]
                 
-                #Generate pair of sessions
-                position_list = []
-                pca_list = []
-                variance_explained_list = []
-                
-                for i in range(number_of_sessions_to_align):
+                successful_run = False
+                while successful_run == False:
+                    
+                    #Generate pair of sessions
+                    position_list = []
+                    pca_list = []
+                    variance_explained_list = []
+                    
+                    for i in range(number_of_sessions_to_align):
+                 
+                        ### Create simulated firing rates
+                        firing_rate_kwargs = firing_rate_kwargs_list[i]
+                        simulated_type = 'latent'
+                        firing_rate_funs_by_neuron = create_simulated_firing_rates(num_neurons, simulated_type, **firing_rate_kwargs)
             
-                    ### Create simulated firing rates
-                    firing_rate_kwargs = firing_rate_kwargs_list[i]
-                    simulated_type = simulated_type_list[i]
-                    firing_rate_funs_by_neuron = create_simulated_firing_rates(num_neurons, simulated_type, **firing_rate_kwargs)
-        
-        
-                    # ## Generate a session worth of data, position and spikes
-                    generate_session_data(dt, num_trials, trial_bins, firing_rate_funs_by_neuron, session_list_to_train_velocity, plot=False)
-                    
-                    
-                    ## Pre-process generated data
-                    data_dict = np.load(OUTPUT_PATH +"generated_session.npy", allow_pickle=True)[()]
-                    data_dict = preprocess_generated_data(data_dict, time_bin_size, position_bin_size, gaussian_size, eliminate_v_zeros)
-                    pca_input_data = data_dict['amplitudes_binned_normalized']
-                    position = data_dict['distance']
-                
-                
-                    
-                
-                    
-                    ## Perform PCA
-                    pca = pf.project_spikes_PCA(pca_input_data, num_components = 3)
-                    ## Perform PCA
-                    pca = decomposition.PCA(n_components=num_neurons)
-                    pca.fit(pca_input_data.T)
-                    
-                    #PCA over time
-                    pca_data = pf.project_spikes_PCA(pca_input_data, pca_instance = pca, num_components = num_components)
-                    variance_explained = pca.explained_variance_ratio_
+            
+                        # ## Generate a session worth of data, position and spikes
+                        error_std = error_std_list[i]
+                        generate_session_data(dt, num_trials, trial_bins, firing_rate_funs_by_neuron, error_std, session_list_to_train_velocity, plot=False)
                         
-                    position_list.append(position)
-                    pca_list.append(pca_data)
-                    variance_explained_list.append(variance_explained)
-                    
-        
-            
-                
-                #Align the pair of sessions
-            
-                M = number_of_sessions_to_align
-                
-                #Set PCA dimension
-                pca_list = mCCA_funs.set_dimension_of_pca_list(pca_list, CCA_dim, variance_explained_list)
-                
-                try:
-                    #Perform mCCA
-                    pos_list_aligned, pca_dict_aligned, mCCA = mCCA_funs.perform_warped_mCCA(position_list, pca_list, max_pos, warping_bins, warp_based_on, 
-                                                                                             return_warped_data, return_trimmed_data, cca_shuffle, skip_alignment)
-                except np.linalg.LinAlgError:
-                    print('LinAlg Error, repeating', num_neurons)
+                        
+                        ## Pre-process generated data
+                        data_dict = np.load(OUTPUT_PATH +"generated_session.npy", allow_pickle=True)[()]
+                        data_dict = preprocess_generated_data(data_dict, time_bin_size, position_bin_size, gaussian_size, eliminate_v_zeros)
+                        pca_input_data = data_dict['amplitudes_binned_normalized']
+                        position = data_dict['distance']
                     
                     
-                #Normalize PCA after alignment changes
-                pca_dict_aligned = mCCA_funs.normalize_pca_dict_aligned(pca_dict_aligned, mCCA)
-                
-                #Find space with best alignment
-                best_space = mCCA_funs.return_best_mCCA_space(pos_list_aligned, pca_dict_aligned, max_pos=1500, verbose=False)
-                pca_list_aligned = pca_dict_aligned[best_space]
+                        
+                    
+                        
+                        ## Perform PCA
+                        pca = pf.project_spikes_PCA(pca_input_data, num_components = 3)
+                        ## Perform PCA
+                        pca = decomposition.PCA(n_components=num_neurons)
+                        pca.fit(pca_input_data.T)
+                        
+                        #PCA over time
+                        pca_data = pf.project_spikes_PCA(pca_input_data, pca_instance = pca, num_components = num_components)
+                        variance_explained = pca.explained_variance_ratio_
                             
-                pca_list = [pca_dict_aligned[m][m] for m in range(M)]
-                unaligned_error_array, aligned_error_array, pos_pred_dict = mCCA_funs.get_cross_prediction_errors(pos_list_aligned, pca_list, pos_list_aligned, pca_dict_aligned, 
-                                                                                                   max_pos, cv_folds, error_type, predictor_name, return_position_predictions=True)
+                        position_list.append(position)
+                        pca_list.append(pca_data)
+                        variance_explained_list.append(variance_explained)
+                        
+            
                 
-                print(unaligned_error_array)
-                print(aligned_error_array)
+                    
+                    #Align the pair of sessions
                 
-                perf = 0
-                for target_idx in range(2):
-                    ref_idx = (target_idx+1)%2
-                    unaligned_gap = unaligned_error_array[ref_idx, target_idx] - unaligned_error_array[target_idx, target_idx]
-                    aligned_gap = aligned_error_array[ref_idx, target_idx] - aligned_error_array[target_idx, target_idx]
-                    perf += 1 - aligned_gap/(1e-8 + unaligned_gap)
-                perf = perf/2
-                alignment_performance_list.append(perf)
+                    M = number_of_sessions_to_align
+                    
+                    #Set PCA dimension
+                    pca_list = mCCA_funs.set_dimension_of_pca_list(pca_list, CCA_dim, variance_explained_list)
+                    
+                    try:
+                        #Perform mCCA
+                        pos_list_aligned, pca_dict_aligned, mCCA = mCCA_funs.perform_warped_mCCA(position_list, pca_list, max_pos, warping_bins, warp_based_on, 
+                                                                                                 return_warped_data, return_trimmed_data, cca_shuffle, skip_alignment)
+                    except np.linalg.LinAlgError:
+                        print('LinAlg Error, repeating', num_neurons)
+                        
+                        
+                    #Normalize PCA after alignment changes
+                    pca_dict_aligned = mCCA_funs.normalize_pca_dict_aligned(pca_dict_aligned, mCCA)
+                    
+                    #Find space with best alignment
+                    best_space = mCCA_funs.return_best_mCCA_space(pos_list_aligned, pca_dict_aligned, max_pos=1500, verbose=False)
+                    pca_list_aligned = pca_dict_aligned[best_space]
+                                
+                    pca_list = [pca_dict_aligned[m][m] for m in range(M)]
+                    unaligned_error_array, aligned_error_array, pos_pred_dict = mCCA_funs.get_cross_prediction_errors(pos_list_aligned, pca_list, pos_list_aligned, pca_dict_aligned, 
+                                                                                                       max_pos, cv_folds, error_type, predictor_name, return_position_predictions=True)
+                    
+                    # unaligned_error_diff = np.average([unaligned_error_array[0,1] - unaligned_error_array[0,0], unaligned_error_array[1,0] - unaligned_error_array[1,1]])
+                    # if unaligned_error_diff
+                    
+                    perf = 0
+                    for target_idx in range(2):
+                        ref_idx = (target_idx+1)%2
+                        unaligned_gap = unaligned_error_array[ref_idx, target_idx] - unaligned_error_array[target_idx, target_idx]
+                        aligned_gap = aligned_error_array[ref_idx, target_idx] - aligned_error_array[target_idx, target_idx]
+                        perf += 1 - aligned_gap/(1e-8 + unaligned_gap)
+                    perf = perf/2
+                    alignment_performance_list.append(perf)
+                    
+                    print(unaligned_error_array)
+                    print(aligned_error_array)
+                    print(perf)
+                    
+                    
+                    successful_run = True
+            
+            # print(alignment_performance_list)
+            alignment_performance_by_neuron_num.append(alignment_performance_list)
         
-                
-                
-                # self_error_array_total += unaligned_error_array.diagonal()
-                # unaligned_error_array_total += unaligned_error_array
-                # aligned_error_array_total += aligned_error_array
-                
-                self_error_array_total = np.hstack((self_error_array_total, unaligned_error_array.diagonal().reshape((2,1))))
-                unaligned_error_array_total = np.dstack((unaligned_error_array_total, unaligned_error_array))
-                aligned_error_array_total = np.dstack((aligned_error_array_total, aligned_error_array))
-                
-                
-                # self_error = np.average(unaligned_error_array.diagonal())
-                # unaligned_error = np.average(unaligned_error_array[[0,1],[1,0]])
-                # aligned_error = np.average(aligned_error_array[[0,1],[1,0]])
-                
-                # self_error_list.append(self_error)
-                # unaligned_error_list.append(unaligned_error)
-                # aligned_error_list.append(aligned_error)
-                
-                # self_error_list.append(unaligned_error_array.diagonal()[0])
-                # unaligned_error_list.append(unaligned_error_array[0,1])
-                # aligned_error_list.append(aligned_error_array[0,1])
-                
-                # self_error_list.append(unaligned_error_array.diagonal()[1])
-                # unaligned_error_list.append(unaligned_error_array[1,0])
-                # aligned_error_list.append(aligned_error_array[1,0])
-                
-                # self_error_list.append(unaligned_error_array.diagonal()[0])
-                # unaligned_error_list.append(unaligned_error_array[0,1])
-                # aligned_error_list.append(aligned_error_array[0,1])
+        alignment_performance_by_neuron_dict[pair_type] = alignment_performance_by_neuron_num
         
         
+    dict_to_save = {
+        'alignment_performance_by_neuron_dict':alignment_performance_by_neuron_dict, 
+        'pair_type_list':pair_type_list,
+        'num_neurons_list':num_neurons_list
+
+        }
+    
+    label_save = 'figSI1_simulated_cca_by_dimensionality'
+    save_data(label_save, dict_to_save)
+    
+    CCA_by_dimensionality_plots()
+    
+def CCA_by_dimensionality_plots():
+    
+
+    ## Load data
+    label_save = 'figSI1_simulated_cca_by_dimensionality'
+    results_dict = load_data(label_save)
+    
+    alignment_performance_by_neuron_dict = results_dict['alignment_performance_by_neuron_dict']
+    pair_type_list = results_dict['pair_type_list']
+    num_neurons_list = results_dict['num_neurons_list']
+
+
+    # number_of_session_lists = len(error_arrays_total_list)
         
-                self_error_list.extend(unaligned_error_array.diagonal())
-                unaligned_error_list.extend(unaligned_error_array[[0,1],[1,0]])
-                aligned_error_list.extend(aligned_error_array[[0,1],[1,0]])
-                successful_run = True
         
-        print(alignment_performance_list)
-        alignment_performance_by_neuron_num.append(alignment_performance_list)
+    fig_num = 1
+    fs = 15
+    color_list = ['black', 'gray']
         
         
-    fig = plt.figure(num=fig_num, figsize=(4,4)); fig_num += 1
+    fig = plt.figure(num=fig_num, figsize=(4,3)); fig_num += 1
     ax  = plt.gca()
     
     xx = num_neurons_list
-    avg_list = np.array([np.average(l) for l in alignment_performance_by_neuron_num])
-    std_list = np.array([np.std(l) for l in alignment_performance_by_neuron_num])
-
-    ax.plot(xx, avg_list, '-', lw=3, color='black')
-    ax.fill_between(xx, avg_list-std_list, avg_list+std_list, color='black', alpha=0.5)
+    for pair_type_idx, pair_type in enumerate(pair_type_list):
+        alignment_performance_by_neuron_num = alignment_performance_by_neuron_dict[pair_type]
+        print(alignment_performance_by_neuron_num)
+        color = color_list[pair_type_idx]
+        avg_list = np.array([np.average(l) for l in alignment_performance_by_neuron_num])
+        std_list = np.array([np.std(l)/np.sqrt(len(l)) for l in alignment_performance_by_neuron_num])
+    
+        ax.plot(xx, avg_list, '-', lw=3, color=color, label=pair_type)
+        ax.fill_between(xx, avg_list-std_list, avg_list+std_list, color=color, alpha=0.5)
      
     ax.set_ylim([0, ax.get_ylim()[1]])
+    if len(pair_type_list) > 1:
+        ax.legend(fontsize=fs, frameon=False)
+
         
     ax.set_xlabel('Neurons per session', fontsize=fs)
     ax.set_ylabel('Alignment performance', fontsize=fs)
     ax.tick_params(axis='y', which='major', labelsize=fs)
-    
+    ax.tick_params(axis='x', which='major', labelsize=fs)
+
     ax.spines[['right', 'top']].set_visible(False)
     for axis in ['top','bottom','left','right']:
         ax.spines[axis].set_linewidth(3)
-        ax.xaxis.set_tick_params(width=pparam.AXIS_WIDTH, length=pparam.TICKS_LENGTH)
-        ax.yaxis.set_tick_params(width=pparam.AXIS_WIDTH, length=pparam.TICKS_LENGTH)    
+    ax.xaxis.set_tick_params(width=pparam.AXIS_WIDTH, length=pparam.TICKS_LENGTH)
+    ax.yaxis.set_tick_params(width=pparam.AXIS_WIDTH, length=pparam.TICKS_LENGTH)    
         
     fig.tight_layout()
+    save_figure(fig, 'figSIM1_cca_by_dimensionality')
+
+    
+    
+    ##
 
     
 
@@ -1718,18 +1762,16 @@ def simulated_airpuff_quantification():
     ## Plotting parameters
     fig_num = 1
     fs = 15
-    pca_plot_bin_size = 50 #Only used for plotting pca
     
-    CCA_random_shifts = 25    #Number of random shifts WARNING: LDA PROB NOT CALCULATED FOR IT!!!
     
     
     
     ########## SIMULATION PARAMETERS ###########
     ## Session generation
-    mice_num_per_type = 20
+    mice_num_per_type = 10
     mouse_types = ['Same', 'Different', 'Alignment shift', 'Poor representation', 'Misaligned']
     # mouse_types = ['Same', 'Different', 'Alignment shift']
-    # mouse_types = ['Different']
+    mouse_types = ['Different']
     # mouse_types = ['Different']
 
     mouse_type_num = len(mouse_types)
@@ -1750,81 +1792,53 @@ def simulated_airpuff_quantification():
     ### Position generation
     dt = 0.01 # time interval, in seconds
     num_neurons = 50 # Number of neurons
-    num_trials = 30 # Number of trials per generated session
+    num_trials = 50 # Number of trials per generated session
     
     ### Firing rate generation
+    
+    firing_rate_parameter_dict = {}
+    avg_noise = .1
+    for mtype in mouse_types:
+        if mtype == 'Same':
+            error_std_list = [avg_noise] * session_num
+            firing_rate_kwargs_list = [{'latent_type':'deformed circle 1'}] * session_num
+            firing_rate_parameter_dict[mtype, 'error_std_list'] = error_std_list
+            firing_rate_parameter_dict[mtype, 'firing_rate_kwargs_list'] = firing_rate_kwargs_list
 
 
-    ## Probability weights by position for the firing rate generation
-    ## (1) Homogenous
-    firing_rate_position_probs = np.ones(max_pos)/max_pos 
-    
-    ## (2) Reward bias
-    firing_rate_position_probs = np.ones(max_pos) # Probability weights by position for the firing rate generation
-    firing_rate_position_probs[:150] = firing_rate_position_probs[-150:] = 2.
-    firing_rate_position_probs = firing_rate_position_probs / np.sum(firing_rate_position_probs)
-    
-    ## (3) Delete sections
-    firing_rate_position_probs = np.ones(max_pos) # Probability weights by position for the firing rate generation
-    firing_rate_position_probs[250:1250] = 0
-    firing_rate_position_probs = firing_rate_position_probs / np.sum(firing_rate_position_probs)
-    
-    ## Probability weights by position for the firing rate standard deviation
-    ## (1) Homogeneous
-    firing_rate_std_probs = np.ones(max_pos)/max_pos 
-    
-    
-    # ## (2) Small only
-    # firing_rate_std_probs = np.ones(max_pos)
-    # firing_rate_std_probs[250:] = 0
-    # firing_rate_std_probs = firing_rate_std_probs/np.sum(firing_rate_std_probs)
+        elif mtype == 'Different':
+            error_std_list = [avg_noise] * session_num
+            firing_rate_kwargs_list = [{'latent_type':'deformed circle sigmoid 1'}] * B_session_num
+            firing_rate_kwargs_list +=  [{'latent_type':'deformed circle sigmoid 2'}] * T_session_num
+            firing_rate_kwargs_list +=  [{'latent_type':'deformed circle sigmoid 1'}] * P_session_num
+            firing_rate_parameter_dict[mtype, 'error_std_list'] = error_std_list
+            firing_rate_parameter_dict[mtype, 'firing_rate_kwargs_list'] = firing_rate_kwargs_list
 
-    # ## (3) Small or big
-    # firing_rate_std_probs = np.ones(4*max_pos)
-    # firing_rate_std_probs[250:(4*max_pos - 250)] = 0
-    # firing_rate_std_probs = firing_rate_std_probs/np.sum(firing_rate_std_probs)
-    
-    simulated_type1 = 'gaussian'
-    firing_rate_kwargs1 ={"firing_rate_position_probs":firing_rate_position_probs, "firing_rate_std_probs":firing_rate_std_probs}
-    
-    simulated_type2 = 'gaussian'
-    firing_rate_kwargs2 ={"firing_rate_position_probs":firing_rate_position_probs, "firing_rate_std_probs":firing_rate_std_probs}
+        elif mtype in ['Misaligned', 'Poor representation', 'Alignment shift']:
+            if mtype == 'Poor representation':
+                error_std_list = [25.] * session_num
+            else:
+                error_std_list = [avg_noise] * session_num
+            
+            # #Make all sessions equal
+            # firing_rate_kwargs_list = [{'latent_type':'deformed circle 1'}] * session_num
+            
+            #Make sessions unequal
+            firing_rate_kwargs_list = [{'latent_type':'deformed circle sigmoid 1'}] * B_session_num
+            firing_rate_kwargs_list +=  [{'latent_type':'deformed circle sigmoid 2'}] * T_session_num
+            firing_rate_kwargs_list +=  [{'latent_type':'deformed circle sigmoid 1'}] * P_session_num
 
-    ## Latent parameters    
-    error_std1 = .01
-    error_std2 = .01
+            firing_rate_parameter_dict[mtype, 'error_std_list'] = error_std_list
+            firing_rate_parameter_dict[mtype, 'firing_rate_kwargs_list'] = firing_rate_kwargs_list
 
-    # error_std = np.array([0.05]*max_pos)
-    # error_std[500:1000] = 3.
     
-    simulated_type1 = 'latent'
     
-    latent_type1 = 'deformed circle 1'
-    # latent_type1 = 'deformed circle sigmoid 1'
-
-    firing_rate_kwargs1 = {"error_std":error_std1, 'latent_type':latent_type1}
-    
-    simulated_type2 = 'latent'
-    
-    # latent_type2 = 'deformed circle 2'
-    # latent_type2 = 'deformed circle twist 2'
-    latent_type2 = 'deformed circle 1'
-    # latent_type2 = 'deformed circle sigmoid 2'
-
-
-    firing_rate_kwargs2 = {"error_std":error_std2, 'latent_type':latent_type2}
-    
-    simulated_type_list = [simulated_type1] * B_session_num + [simulated_type2]*T_session_num + [simulated_type1]*P_session_num
-    firing_rate_kwargs_list = [firing_rate_kwargs1] * B_session_num + [firing_rate_kwargs2]*T_session_num + [firing_rate_kwargs1]*P_session_num
-    
-    # firing_
 
     ########## START SIMULATIONS ###########
     mtype_by_mouse = []
     for mtype in mouse_types:
         mtype_by_mouse.extend([mtype]*mice_num_per_type)
     mtype_by_mouse = np.array(mtype_by_mouse)
-    print(mtype_by_mouse)
 
     ## Store velocities from real data
     compute_and_store_velocity_data(trial_bins, session_list_to_train_velocity, time_bin_size, position_bin_size, gaussian_size, 
@@ -1841,57 +1855,26 @@ def simulated_airpuff_quantification():
     for mnum in range(mice_num):
         
         mtype = mtype_by_mouse[mnum]
-        print(mtype)
-        if mtype == 'Same':
-            error_std1 = .01
-            error_std2 = .01
-            latent_type1 = 'deformed circle 1'
-            firing_rate_kwargs1 = {"error_std":error_std1, 'latent_type':latent_type1}
-            latent_type2 = 'deformed circle 1'
-            firing_rate_kwargs2 = {"error_std":error_std2, 'latent_type':latent_type2}
-            firing_rate_kwargs_list = [firing_rate_kwargs1] * B_session_num + [firing_rate_kwargs2]*T_session_num + [firing_rate_kwargs1]*P_session_num
-
-        elif mtype == 'Different':
-            error_std1 = .01
-            error_std2 = .01
-            latent_type1 = 'deformed circle sigmoid 1'
-            firing_rate_kwargs1 = {"error_std":error_std1, 'latent_type':latent_type1}
-            latent_type2 = 'deformed circle sigmoid 2'
-            firing_rate_kwargs2 = {"error_std":error_std2, 'latent_type':latent_type2}
-            firing_rate_kwargs_list = [firing_rate_kwargs1] * B_session_num + [firing_rate_kwargs2]*T_session_num + [firing_rate_kwargs1]*P_session_num
-
-        elif mtype in ['Misaligned', 'Poor representation', 'Alignment shift']:
-            if mtype == 'Poor representation':
-                error_std1 = 15
-                error_std2 = 15
-            else:
-                error_std1 = .01
-                error_std2 = .01
-            latent_type1 = 'deformed circle 1'
-            # latent_type1 = 'deformed circle sigmoid 1'
-            firing_rate_kwargs1 = {"error_std":error_std1, 'latent_type':latent_type1}
-            latent_type2 = 'deformed circle 1'
-            # latent_type2 = 'deformed circle sigmoid 2'
-            firing_rate_kwargs2 = {"error_std":error_std2, 'latent_type':latent_type2}
-            firing_rate_kwargs_list = [firing_rate_kwargs1] * B_session_num + [firing_rate_kwargs2]*T_session_num + [firing_rate_kwargs1]*P_session_num
-
-
 
         #Generate list of sessions
         position_list = []
         pca_list = []
         variance_explained_list = []
         
+        error_std_list = firing_rate_parameter_dict[mtype, 'error_std_list']
+        firing_rate_kwargs_list = firing_rate_parameter_dict[mtype, 'firing_rate_kwargs_list']
+
         for i in range(session_num):
     
             ### Create simulated firing rates
+            simulated_type = 'latent'
             firing_rate_kwargs = firing_rate_kwargs_list[i]
-            simulated_type = simulated_type_list[i]
             firing_rate_funs_by_neuron = create_simulated_firing_rates(num_neurons, simulated_type, **firing_rate_kwargs)
     
     
             # ## Generate a session worth of data, position and spikes
-            generate_session_data(dt, num_trials, trial_bins, firing_rate_funs_by_neuron, session_list_to_train_velocity, plot=False)
+            error_std = error_std_list[i]
+            generate_session_data(dt, num_trials, trial_bins, firing_rate_funs_by_neuron, error_std, session_list_to_train_velocity, plot=False)
             
             
             ## Pre-process generated data
@@ -2051,8 +2034,38 @@ def simulated_airpuff_quantification():
             print(f1)
             TCA_on_LDA_counter += 1
         APdecoding_dict[mnum, 'f1_array'] = f1_array
+    
+    
+    dict_to_save = {
+        'APdecoding_dict':APdecoding_dict, 
+        'mouse_types':mouse_types,
+        'mtype_by_mouse':mtype_by_mouse,
 
-    print(list(APdecoding_dict.keys()))
+        }
+    
+    label_save = 'figSI1_simulated_airpuff_decoding'
+    save_data(label_save, dict_to_save)
+    
+    simulated_airpuff_quantification_plots()
+    
+def simulated_airpuff_quantification_plots():
+    
+
+    ## Load data
+    label_save = 'figSI1_simulated_airpuff_decoding'
+    results_dict = load_data(label_save)
+    
+    APdecoding_dict = results_dict['APdecoding_dict']
+    mouse_types = results_dict['mouse_types']
+    mtype_by_mouse = results_dict['mtype_by_mouse']
+    mouse_num = len(mtype_by_mouse)
+    mouse_type_num = len(mouse_types)
+    mouse_list = np.arange(mouse_num)
+    
+    ### Plotting parameters
+    fig_num = 1
+    fs = 15
+    
     
     #### Process results ####
     f1_avg_by_mouse = np.zeros((len(mouse_list), 2))
@@ -2136,6 +2149,8 @@ def simulated_airpuff_quantification():
         ax.spines[axis].set_linewidth(3)
         
     fig.tight_layout()
+    save_figure(fig, 'figSIM1_cca_by_dimensionality')
+
 
 def compute_position_prediction_error_on_generated_data():
     ########## PARAMETERS ###########
@@ -2475,15 +2490,15 @@ def create_simulated_firing_rates(num_neurons, simulated_type = 'gaussian', retu
         if kwargs['latent_type'] == 'deformed circle 1':
             x = np.cos(2*np.pi*tt/max_pos) * 1 * (1 + np.exp(-1 * (((tt - max_pos/2)**2)/(2*(350**2)))))
             y = np.sin(2*np.pi*tt/max_pos) * 1 * (1 + np.exp(-1 * (((tt - 2*max_pos/5)**2)/(2*(200**2)))))
-            z = np.cos(2*np.pi*tt/max_pos)**2
+            z = np.cos(2*np.pi*(tt/max_pos))**2  * 0.5 * (1 + np.exp(-1 * (((tt - max_pos/2)**2)/(2*(400**2)))))
             # z =[0]*len(tt)
 
             latent_array = np.vstack((x,y,z))
 
         elif kwargs['latent_type'] == 'deformed circle 2':
             x = np.cos(2*np.pi*((tt/max_pos)**2)) * 1 *(1 + np.exp(-1 * (((tt - 3*max_pos/5)**2)/(2*(200**2)))))
-            y = np.sin(2*np.pi*((tt/max_pos)**2)) * 1 *(1 + np.exp(-1 * (((tt - max_pos/2)**2)/(2*(350**2)))))
-            z = np.cos(2*np.pi*((tt/max_pos)**2))**2
+            y = -np.sin(2*np.pi*((tt/max_pos)**2)) * 2 *(1 + np.exp(-1 * (((tt - max_pos/2)**2)/(2*(350**2)))))
+            z = -3*np.cos(2*np.pi*((tt/max_pos)**2))**2
             # z =[0]*len(tt)
             latent_array = np.vstack((x,y,z))
 
@@ -2683,9 +2698,9 @@ def generate_session_data(dt, num_trials, trial_bins, firing_rate_funs_by_neuron
     #Plot
     if plot == True:
         fig_num = 1
-        fig, axs = plt.subplots(5,5, figsize=(8,8)); fig_num += 1
+        fig, axs = plt.subplots(4,4, figsize=(8,8)); fig_num += 1
         fs = 12
-        for n in range(25):
+        for n in range(16):
             ax = axs.ravel()[n]
             xx = np.linspace(0, max_pos, 100)
             firing_rate_fun = firing_rate_funs_by_neuron[n]
@@ -2822,6 +2837,32 @@ def simulate_position_trials(velocity_generator, dt= 0.01, max_trials=1, max_pos
     return pos_list, time_list
         
         
+
+def save_figure(fig, fig_name):
+    print(pparam.FIGURES_PATH + fig_name + ".svg")
+    fig.savefig(pparam.FIGURES_PATH + fig_name + ".svg")
+    
+def create_output_file_path_numpy_to_save(filename):
+    ''' Given a filename associated to a .mat file, return the full filename '''
+    return pparam.OUTPUT_PATH + filename
+
+def save_data(filename, data):
+    ''' Save data as ".npy". Data can be dict or anything '''
+    file_path = create_output_file_path_numpy_to_save(filename)
+        
+    np.save(file_path, data, allow_pickle=True)
+    
+def load_data(filename):
+    ''' Load data, presumably saved using function "save_data" above.
+        Loads ".npy" files with the given filename. Data can be dict or anything '''
+
+    file_path = create_output_file_path_numpy_to_load(filename)
+    results = np.load(file_path, allow_pickle=True)[()]
+    return results
+
+def create_output_file_path_numpy_to_load(filename):
+    ''' Given a filename associated to a .mat file, return the full filename '''
+    return pparam.OUTPUT_PATH + filename + '.npy'
 
 
 with h5py.File(FAT_CLUSTER_PATH, 'r') as fat_cluster:
