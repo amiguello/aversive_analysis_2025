@@ -51,7 +51,7 @@ def main():
     # save_pca_data(np.arange(8), np.arange(9)) #Uncomment this once to pre-compute PCA data. 
     
     ''' Figure 1 plots '''
-    count_neurons()
+    # count_neurons()
     # plot_fig1_C_firing_rates()
     # plot_fig1_D_pcas()
     # plot_fig1_E_position_prediction_example()
@@ -86,7 +86,7 @@ def main():
     # fig4_C_D_E_distance_measures()
     
     ''' Figure 4 SI plots '''
-    # fig4SI_G_H_I_distance_measures()
+    fig4SI_G_H_I_distance_measures()
     
     ''' Figure 5 plots '''
     # fig5_A_F1_by_TCA_dimension()
@@ -4157,7 +4157,7 @@ def compute_and_plot_trial_factor_distances(distance_comparison = 'session_type'
     # mouse_list = [0,6]
 
     #Distance parameters
-    distance_comparison = 'session_type' #'session_type', 'airpuff', 'single_session'
+    # distance_comparison = 'session_type' #'session_type', 'airpuff', 'single_session'
     distance_shuffles = 10
 
     
@@ -4194,7 +4194,7 @@ def compute_and_plot_trial_factor_distances(distance_comparison = 'session_type'
         'TCA_factors':'max',
         'TCA_replicates':10,
         'TCA_convergence_attempts':10, #Number of times TCA can fail before giving up
-        'TCA_on_LDA_repetitions':10,
+        'TCA_on_LDA_repetitions':15,
         
         ## LDA params ##
         'LDA_imbalance_prop':.6,
@@ -4236,7 +4236,7 @@ def compute_and_plot_trial_factor_distances(distance_comparison = 'session_type'
         distance_type_names_short = [n[0] for n in distance_type_names]
         
     elif distance_comparison == 'airpuff':
-        distance_type_names = ['AP', 'No AP']
+        distance_type_names = ['No AP', 'AP']
         distance_type_colors = pparam.SESSION_TYPE_COLORS[:2]
         distance_type_num = len(distance_type_names)
         distance_type_names_short = distance_type_names
@@ -4543,6 +4543,8 @@ def compute_and_plot_trial_factor_distances(distance_comparison = 'session_type'
     
     delta_vals = {} #{(mtype, dtype): [delta of avg]}
     delta_ypos_vals = {dtype:[] for dtype in trial_type_unique[:-1]} #{(dtype): [delta of avg]}
+    max_ypos_by_mtype = {mtype:0 for mtype in range(len(midxs_by_type))}
+    max_ypos = 0
     for midx_list_idx, midx_list in enumerate(midxs_by_type):
         mtype = mtype_unique[midx_list_idx]
         color = pparam.MOUSE_TYPE_COLORS_BY_MTYPE[mtype]
@@ -4555,10 +4557,10 @@ def compute_and_plot_trial_factor_distances(distance_comparison = 'session_type'
             std_list[trial_type_idx] = np.std(dds)/np.sqrt(len(dds))
         ax.plot(xx, avg_list, 'o-', lw=3, color=color, label=mtype)
         ax.fill_between(xx, avg_list-std_list, avg_list+std_list, color=color, alpha=0.5)
-        
-        
-         
-            
+        max_yval = np.max(np.array(avg_list+std_list))
+        max_ypos = np.maximum(max_ypos, max_yval)
+        max_ypos_by_mtype[midx_list_idx] = max_yval
+
         for dtype_idx, dtype in enumerate(trial_type_unique[:-1]):
 
             #Delta stat significances (compare the differences with probe)
@@ -4572,25 +4574,46 @@ def compute_and_plot_trial_factor_distances(distance_comparison = 'session_type'
                 # delta_of_avg = np.average(deltas)
                 delta_of_avg_list.append(delta_of_avg)
             delta_vals[mtype,dtype] = delta_of_avg_list
-       
-    #Plot delta stat significances (compare the differences with probe)
-
-    for dtype_idx, dtype in enumerate(trial_type_unique[:-1]):
-        mtype = mtype_unique[midx_list_idx]
-        delta_list_id = delta_vals[MOUSE_TYPE_LABELS[0], dtype]
-        delta_list_dd = delta_vals[MOUSE_TYPE_LABELS[1], dtype]
-        # tstat, pval = scipy.stats.ttest_ind(delta_list_id, delta_list_dd, equal_var=True, permutations=None, alternative='greater')
-        tstat, pval = scipy.stats.mannwhitneyu(delta_list_id, delta_list_dd, use_continuity=False, alternative='greater')
-
-        p00 = np.max(delta_ypos_vals[dtype])
-        p10 = xx[dtype_idx]; p11 = p10
-        d0 = 0; dp = 0; label_padding = 0
-        pf.draw_significance(ax, pval, p00, p10, p10, d0, dp, orientation='top', label_padding=label_padding, thresholds = [0.05], fs=fs+15)
-     
+      
+    if distance_comparison == 'session_type': 
+        #Plot delta stat significances (compare the differences with probe)
+        for dtype_idx, dtype in enumerate(trial_type_unique[:-1]):
+            mtype = mtype_unique[midx_list_idx]
+            delta_list_id = delta_vals[MOUSE_TYPE_LABELS[0], dtype]
+            delta_list_dd = delta_vals[MOUSE_TYPE_LABELS[1], dtype]
+            # tstat, pval = scipy.stats.ttest_ind(delta_list_id, delta_list_dd, equal_var=True, permutations=None, alternative='greater')
+            tstat, pval = scipy.stats.mannwhitneyu(delta_list_id, delta_list_dd, use_continuity=False, alternative='greater')
+    
+            # p00 = np.max(delta_ypos_vals[dtype])
+            p00 = max_ypos
+            p10 = xx[dtype_idx]; p11 = p10
+            d0 = 0; dp = 0; label_padding = 0
+            pf.draw_significance(ax, pval, p00, p10, p10, d0, dp, orientation='top', label_padding=label_padding, thresholds = [0.05], fs=fs+15)
+        
+            print(delta_list_id, delta_list_dd)
+            print("pval", dtype, pval)
             
-         
-        print(delta_list_id, delta_list_dd)
-        print("pval", dtype, pval)
+    elif distance_comparison == 'airpuff':
+        #Just compare NoAP with AP for both mouse types
+        
+        
+        for midx_list_idx, midx_list in enumerate(midxs_by_type):
+
+            lists_of_values = []            
+            for dtype_idx, dtype in enumerate(trial_type_unique):
+                
+                vals = distance_dict_by_mtype_dtype_and_belonging[mtype, trial_type_idx, 0]
+                lists_of_values.append(vals)
+
+            tstat, pval = scipy.stats.mannwhitneyu(lists_of_values[0], lists_of_values[1], 
+                                                    use_continuity=False, alternative='two-sided')
+            p00 = max_ypos_by_mtype[midx_list_idx]
+            p10 = xx[0]; p11 = p10
+            d0 = 0; dp = 0; label_padding = 0
+            pf.draw_significance(ax, pval, p00, p10, p10, d0, dp, orientation='top', label_padding=label_padding, thresholds = [0.05], fs=fs+15)
+        
+            print(np.average(lists_of_values[0]), np.average(lists_of_values[1]))
+            print("pval", dtype, pval)
 
     xlabels = [distance_type_names[i] for i in trial_type_unique]
     ax.set_xticks(xx, xlabels, fontsize=fs)

@@ -21,6 +21,7 @@ from functools import partial
 
 import matplotlib as mpl
 import matplotlib.pyplot as plt
+import matplotlib.patheffects as path_effects
 
 import numpy as np
 import scipy
@@ -997,7 +998,8 @@ def plot_colored_line_3d(x, y, z, color_scalar, cmap_name='viridis', fig=1, ax=N
         norm = plt.Normalize(np.min(color_scalar), np.max(color_scalar))
     else:
         norm = plt.Normalize(color_norm_limits[0], color_norm_limits[1])
-    lc = Line3DCollection(segments, cmap=cmap, norm=norm)
+    lc = Line3DCollection(segments, cmap=cmap, norm=norm, path_effects=[path_effects.Stroke(capstyle="round")])
+    # lc = Line3DCollection(segments, cmap=cmap, norm=norm)
     lc.set_array(color_scalar)
     lc.set_linewidth(lw)
     line = ax.add_collection(lc)
