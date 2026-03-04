@@ -41,8 +41,8 @@ def main():
     # CCA_by_dimensionality_plots()
     # simulated_airpuff_quantification()
     # simulated_airpuff_quantification_plots()
-    simulated_airpuff_quantification_by_dimensionality()
-    # simulated_airpuff_quantification_by_dimensionality_plots()
+    # simulated_airpuff_quantification_by_dimensionality()
+    simulated_airpuff_quantification_by_dimensionality_plots()
 
     # test_shapes()
     # <>
