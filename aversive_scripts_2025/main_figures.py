@@ -83,10 +83,10 @@ def main():
 
     ''' Figure 4 plots '''
     # fig4_A_session_comparisons()  
-    # fig4_C_D_E_distance_measures()
+    fig4_C_D_E_distance_measures()
     
     ''' Figure 4 SI plots '''
-    fig4SI_G_H_I_distance_measures()
+    # fig4SI_G_H_I_distance_measures()
     
     ''' Figure 5 plots '''
     # fig5_A_F1_by_TCA_dimension()
@@ -4602,7 +4602,7 @@ def compute_and_plot_trial_factor_distances(distance_comparison = 'session_type'
             lists_of_values = []            
             for dtype_idx, dtype in enumerate(trial_type_unique):
                 
-                vals = distance_dict_by_mtype_dtype_and_belonging[mtype, trial_type_idx, 0]
+                vals = distance_dict_by_mtype_dtype_and_belonging[mtype, dtype_idx, 0]
                 lists_of_values.append(vals)
 
             tstat, pval = scipy.stats.mannwhitneyu(lists_of_values[0], lists_of_values[1], 
